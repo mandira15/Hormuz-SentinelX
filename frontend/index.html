@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ET AI - Executive Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div class="dashboard">
+      <header class="glass-panel header">
+        <h1>ET AI <span>Global Intelligence</span></h1>
+        <div class="status-indicator">
+          <span class="dot"></span>
+          System Online
+        </div>
+      </header>
+
+      <div class="content-grid">
+        <aside class="sidebar glass-panel">
+          <div class="score-card">
+            <h2>Import Dependency Score</h2>
+            <div class="score-value" id="ids-score">--</div>
+            <div class="score-label">Risk Level: High</div>
+          </div>
+          
+          <button id="trigger-pipeline" class="action-btn">Run AI Pipeline</button>
+        </aside>
+
+        <main class="main-panel glass-panel">
+          <h2>Map View (Placeholder)</h2>
+          <div class="map-container" id="map-placeholder">
+            <div class="map-overlay">
+              <p>Initializing globe.gl render...</p>
+            </div>
+          </div>
+        </main>
+
+        <section class="brief-panel glass-panel">
+          <h2>AI Narrative Brief</h2>
+          <div class="brief-content" id="narrative-brief">
+            <p class="placeholder-text">Click 'Run AI Pipeline' to synthesize reports from Geopolitical, Logistics, and Market agents.</p>
+          </div>
+        </section>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

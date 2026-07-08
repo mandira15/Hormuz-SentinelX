@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:15
+    container_name: hormuz-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-et_ai_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: hormuz-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  ais-collector:
+    build: .
+    container_name: hormuz-tracker
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - .:/repo
+    depends_on:
+      - db
+      - redis
+
+  snapshot-cron:
+    build: .
+    container_name: hormuz-snapshot
+    restart: unless-stopped
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        apt-get update -qq && apt-get install -y -qq git cron >/dev/null 2>&1
+        echo "0 0,6,12,18 * * * /bin/bash /app/src/auto_push.sh >> /var/log/snapshot.log 2>&1" | crontab -
+        echo "Snapshot cron installed — running every 6 hours"
+        # Run once immediately on container start
+        /bin/bash /app/src/auto_push.sh >> /var/log/snapshot.log 2>&1 || true
+        cron -f
+    env_file:
+      - .env
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_REPO=${GITHUB_REPO:-yasumorishima/hormuz-ship-tracker}
+    volumes:
+      - ./data:/app/data
+      - .:/repo
+      - ais-collector
+
+volumes:
+  pgdata:
