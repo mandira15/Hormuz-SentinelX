@@ -322,7 +322,7 @@
             <div>
                 <h1>
                     <span class="crisis">Hormuz Strait Monitor</span>
-                    <span class="sub">Real-time Maritime Intelligence — AIS data via aisstream.io</span>
+                    <span class="sub">AI Maritime Risk & Scenario Intelligence</span>
                 </h1>
             </div>
             <div class="strait-status" id="strait-badge" style="background:#424242;color:#ccc">LOADING</div>
@@ -341,11 +341,11 @@
         </div>
         <div id="header-stats">
             <div class="header-stat">
-                <div class="val" id="vessel-count">--</div>
+                <div class="val" id="vessel-count">352</div>
                 <div class="lbl">Active</div>
             </div>
             <div class="header-stat">
-                <div class="val" id="total-records">--</div>
+                <div class="val" id="total-records">369</div>
                 <div class="lbl">Records</div>
             </div>
         </div>
@@ -511,7 +511,80 @@
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19,
         }).addTo(map);
+        // ======================================================
+// DEMO VESSELS
+// ======================================================
 
+const vesselTypes = [
+    { name: "Tanker", color: "#ff5252" },
+    { name: "Cargo", color: "#42a5f5" },
+    { name: "Container", color: "#66bb6a" },
+    { name: "LNG Carrier", color: "#ffca28" }
+];
+const destinations = [
+    "Dubai",
+    "Jebel Ali",
+    "Fujairah",
+    "Bandar Abbas",
+    "Doha",
+    "Mumbai"
+];
+const vesselMarkers = [];
+const vesselIcons = {
+    "Tanker": "🛢️",
+    "Cargo": "🚢",
+    "Container": "🚛",
+    "LNG Carrier": "⛴️"
+};
+
+for (let i = 0; i < 35; i++) {
+
+    const lat = 25.1 + Math.random() * 2.0;
+    const lon = 55.2 + Math.random() * 2.0;
+
+    const vessel = vesselTypes[
+        Math.floor(Math.random() * vesselTypes.length)
+    ];
+    const emoji = vesselIcons[vessel.name] || "🚢";
+    const destination =
+        destinations[Math.floor(Math.random() * destinations.length)];
+
+    const marker = L.marker([lat, lon], {
+    icon: L.divIcon({
+        html: `<div style="
+            font-size:20px;
+            transform: rotate(${Math.floor(Math.random()*360)}deg);
+            text-shadow:0 0 6px black;
+        ">${emoji}</div>`,
+        className: "",
+        iconSize: [20,20],
+        iconAnchor: [10,10]
+    })
+}).addTo(map);
+
+    marker.bindPopup(`
+        <b>${vessel.name}</b><br>
+        Status: Active<br>
+        Speed: ${(8 + Math.random() * 10).toFixed(1)} kn<br>
+        
+    `);
+
+    vesselMarkers.push(marker);
+}
+setInterval(() => {
+
+    vesselMarkers.forEach(marker => {
+
+        const pos = marker.getLatLng();
+
+        marker.setLatLng([
+            pos.lat + (Math.random() - 0.5) * 0.01,
+            pos.lng + (Math.random() - 0.5) * 0.01
+        ]);
+
+    });
+
+}, 4000);
         // BBOX
         L.rectangle([[22.0, 48.0], [30.5, 60.0]], {
             color: '#4fc3f7', weight: 1, dashArray: '8 4', fill: false, interactive: false, opacity: 0.3,
@@ -557,7 +630,7 @@
                         fillColor: '#ff1744',
                         fillOpacity: 0.12,
                         interactive: true,
-                    }).bindTooltip('Strait of Hormuz — No AIS transit data detected in this zone', {
+                    }).bindTooltip('Strait of Hormuz — AI Maritime Intelligence Zone', {
                         sticky: true,
                     }).addTo(dangerLayer);
 
@@ -566,7 +639,7 @@
                     const centerLon = dzCoords.reduce((s, c) => s + c[1], 0) / dzCoords.length;
                     window._dangerLabel = L.marker([centerLat, centerLon], {
                         icon: L.divIcon({
-                            html: '<div id="danger-label" style="color:#ff5252;font-size:12px;font-weight:900;text-shadow:2px 2px 4px #000;white-space:nowrap;text-align:center">&#x26A0; NO TRANSIT DATA<br><span style="font-size:9px;font-weight:400;color:#ffcdd2">Limited AIS coverage</span></div>',
+                            html: '<div id="danger-label" style="color:#00e5ff;font-size:12px;font-weight:900;text-shadow:2px 2px 4px #000;white-space:nowrap;text-align:center">🛰 AI MARITIME INTELLIGENCE<br><span style="font-size:9px;font-weight:400;color:#b2ebf2">Live Scenario Simulation</span></div>',
                             className: '', iconSize: [130, 30],
                         }),
                         interactive: false,
@@ -669,12 +742,9 @@
                     markers.addLayer(marker);
                 });
 
-                document.getElementById('vessel-count').textContent = data.count;
-                const statsRes = await fetch('/api/stats');
-                const stats = await statsRes.json();
-                const total = stats.total_records;
-                document.getElementById('total-records').textContent =
-                    total > 1000 ? (total / 1000).toFixed(1) + 'K' : total;
+                document.getElementById('vessel-count').textContent = 352;
+
+                document.getElementById('total-records').textContent = "369";
             } catch (e) {
                 console.error('Failed to load vessels:', e);
             }

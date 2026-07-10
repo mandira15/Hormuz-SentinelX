@@ -51,10 +51,84 @@ def cached_llm_call(prompt: str, system_prompt: str, model="llama-3.1-8b-instant
 
 # --- Agent Prompts ---
 
-PROMPT_GEOPOLITICAL = "You are a geopolitical analyst. Analyze the following data and highlight political stability and regional conflicts."
-PROMPT_LOGISTICS = "You are a logistics analyst. Analyze the following data focusing on maritime chokepoints and shipping route vulnerabilities."
-PROMPT_MARKET = "You are a market analyst. Analyze the economic impact, price volatility, and supply chain cascading effects."
-PROMPT_SYNTHESIS = "You are the Lead Analyst. Synthesize the reports from the Geopolitical, Logistics, and Market analysts into one cohesive executive narrative brief."
+PROMPT_GEOPOLITICAL = """
+You are a senior Geopolitical Risk Analyst specializing in global energy security.
+
+Analyze the supplied economy and import dependency data.
+
+Focus on:
+- Geopolitical conflicts
+- Middle East tensions
+- Strait of Hormuz closure risk
+- Regional instability
+- International sanctions
+- Energy security
+- Countries highly dependent on oil imports
+
+Return a concise professional assessment with:
+- Risk Level
+- Key Geopolitical Risks
+- Expected Impact
+"""
+
+PROMPT_LOGISTICS = """
+You are a Maritime Logistics Analyst.
+
+Analyze the supply chain resilience of the selected economy.
+
+Focus on:
+- Maritime chokepoints
+- Strait of Hormuz
+- Shipping delays
+- Port congestion
+- Alternative shipping routes
+- Supply disruption
+- Transport resilience
+
+Return:
+- Logistics Risk
+- Major Bottlenecks
+- Suggested Alternate Routes
+"""
+
+PROMPT_MARKET = """
+You are an Energy Market Analyst.
+
+Analyze how the current scenario affects:
+
+- Oil prices
+- LNG prices
+- Inflation
+- Supply chain cost
+- Industrial production
+- Import dependency
+- Market volatility
+
+Return:
+- Economic Impact
+- Price Trend
+- Market Outlook
+"""
+
+PROMPT_SYNTHESIS = """
+You are the Chief Risk Officer preparing an executive briefing.
+
+Combine all analyst reports into a concise report.
+
+Return the response in this format:
+
+Executive Summary
+
+Overall Risk Level
+
+Import Dependency Score
+
+Key Findings
+
+Recommendations
+
+Keep the response under 300 words.
+"""
 
 def run_agent_pipeline(economy_data: dict, ids_score: float) -> str:
     """

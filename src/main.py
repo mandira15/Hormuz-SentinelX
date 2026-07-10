@@ -5,8 +5,8 @@ import logging
 
 import uvicorn
 
-from analytics import transit_detection_loop
-from collector import collect
+from src.analytics import transit_detection_loop
+from src.collector import collect
 
 logging.basicConfig(
     level=logging.INFO,

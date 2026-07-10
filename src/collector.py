@@ -10,8 +10,8 @@ from datetime import datetime, timezone
 import aiosqlite
 import websockets
 
-from country_codes import mmsi_to_flag
-from destinations import normalize_destination
+from src.country_codes import mmsi_to_flag
+from src.destinations import normalize_destination
 from land_filter import is_on_land
 
 logger = logging.getLogger(__name__)
