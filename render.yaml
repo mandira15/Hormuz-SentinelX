@@ -9,4 +9,3 @@ services:
         value: 3.11.9
       - key: AISSTREAM_API_KEY
         sync: false
-        description: "API key from aisstream.io for live AIS tracking. If omitted, the app runs in simulated/mock mode."
