@@ -1,12 +1,14 @@
 # 🛡️ Hormuz Maritime Intelligence Platform (Hormuz-SentinelX)
 
-An AI-powered, real-time energy security and macroeconomic risk intelligence platform monitoring the **Strait of Hormuz** chokepoint. Built for India's Ministry of Petroleum & Natural Gas and the Petroleum Planning & Analysis Cell (PPAC) to analyze crude oil supply resilience, freight premiums, and macroeconomic shocks during chokepoint disruptions.
+An AI-powered, real-time energy security and macroeconomic risk intelligence platform monitoring the **Strait of Hormuz** chokepoint. Built for India's Ministry of Petroleum & Natural Gas and the Planning Commission to assess energy resilience against maritime disruptions.
 
 ## 🚀 One-Click Deployment
 
 Deploy the platform instantly to your preferred cloud provider:
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://hormuz-sentinelx.onrender.com/)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/mandira15/Hormuz-SentinelX)
+
+**Live App**: [Visit Hormuz-SentinelX](https://hormuz-sentinelx.onrender.com)
 
 ---
 
