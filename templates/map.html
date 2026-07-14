@@ -1,976 +1,1773 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hormuz Strait Maritime Monitor — Live Intelligence</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0a0a1a; color: #e0e0e0; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>India Energy Security Intelligence Command — Hormuz Crisis AI Platform</title>
+<meta name="description" content="AI-powered Energy Security and Economic Risk Intelligence for India's Hormuz crisis — Ministry of Petroleum & Natural Gas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+/* ══════════════════════════════════════
+   RESET & ROOT VARIABLES
+══════════════════════════════════════ */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:          #05070f;
+  --bg-panel:    rgba(10,16,28,0.92);
+  --bg-card:     rgba(14,21,34,0.88);
+  --border:      rgba(94,130,170,0.20);
+  --border-h:    rgba(122,193,255,0.18);
+  --grid:        rgba(122,193,255,0.014);
+  --cyan:        #7ac1ff;
+  --blue:        #4a8fe8;
+  --saffron:     #d8a73c;
+  --india-green: #4fd299;
+  --gold:        #d8a73c;
+  --red:         #ef5350;
+  --orange:      #ed7d3a;
+  --yellow:      #f9b142;
+  --green:       #4fd299;
+  --info:        #8fbbff;
+  --text:        #f5f9ff;
+  --text2:       #a8b8d1;
+  --muted:       #7f94ac;
+  --disabled:    #59677e;
+  --r:           10px;
+  --tr:          all 0.4s cubic-bezier(0.4,0,0.2,1);
+  --glow-c:      0 0 12px rgba(59,130,246,0.35);
+  --glow-o:      0 0 10px rgba(239,68,68,0.30);
+  --glow-r:      0 0 10px rgba(239,68,68,0.30);
+  --glow-g:      0 0 10px rgba(34,197,94,0.30);
+  --font:        'Inter',system-ui,sans-serif;
+  --mono:        'JetBrains Mono',monospace;
+}
+html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--text);overflow:hidden;}
 
-        /* ── Header ── */
-        #header {
-            background: linear-gradient(135deg, #0d1b2a 0%, #1b2838 100%);
-            padding: 8px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #2a3a4a;
-            height: 56px;
-        }
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-        #header h1 { font-size: 16px; font-weight: 600; line-height: 1.2; }
-        #header h1 .crisis { color: #4fc3f7; font-weight: 800; }
-        #header h1 .sub { font-size: 11px; color: #888; display: block; font-weight: 400; }
+/* Animated grid background */
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(122,193,255,0.012) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(122,193,255,0.012) 1px,transparent 1px);
+  background-size:48px 48px;
+  animation:gridDrift 25s linear infinite;
+}
+@keyframes gridDrift{from{background-position:0 0}to{background-position:48px 48px}}
 
-        /* Strait status badge */
-        .strait-status {
-            padding: 4px 14px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 800;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            animation: pulse-red 2s ease-in-out infinite;
-        }
-        .strait-blocked {
-            background: #b71c1c;
-            color: #ffcdd2;
-            border: 1px solid #ff5252;
-        }
-        @keyframes pulse-red {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
+/* Scanlines */
+body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.025) 2px,rgba(0,0,0,0.025) 4px);}
 
-        /* Header stats */
-        #header-stats {
-            display: flex;
-            gap: 16px;
-            align-items: center;
-        }
-        .header-stat { text-align: center; }
-        .header-stat .val { font-size: 18px; font-weight: 700; color: #4fc3f7; }
-        .header-stat .lbl { font-size: 9px; color: #888; text-transform: uppercase; }
+/* ══ APP WRAPPER ══ */
+#app{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;}
 
-        /* Transit counter */
-        .transit-counter {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            background: rgba(255,255,255,0.04);
-            border-radius: 6px;
-            padding: 4px 12px;
-            border: 1px solid #2a3a4a;
-        }
-        .transit-dir { text-align: center; }
-        .transit-dir .num { font-size: 18px; font-weight: 800; }
-        .transit-dir .arrow-label { font-size: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .transit-in .num { color: #4caf50; }
-        .transit-in .arrow-label { color: #66bb6a; }
-        .transit-out .num { color: #ff9800; }
-        .transit-out .arrow-label { color: #ffb74d; }
-        .transit-sep { width: 1px; height: 28px; background: #2a3a4a; }
-        .transit-period { font-size: 8px; color: #666; text-transform: uppercase; line-height: 1.3; }
+/* ══════════════════════════════════════
+   COMMAND HEADER
+══════════════════════════════════════ */
+#hdr{
+  background:linear-gradient(135deg,rgba(4,8,18,0.98),rgba(8,16,34,0.98));
+  border-bottom:1px solid var(--border);
+  height:56px;padding:0 18px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;position:relative;z-index:100;
+}
+#hdr::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent 0%,var(--saffron) 20%,#fff 50%,var(--india-green) 80%,transparent 100%);
+  opacity:0.55;
+}
+.hdr-logo{display:flex;align-items:center;gap:10px;}
+.hdr-emblem{font-size:22px;filter:drop-shadow(0 0 6px rgba(255,153,51,0.5));}
+.hdr-title{font-size:12.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;
+  background:linear-gradient(135deg,var(--saffron),var(--cyan));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hdr-sub{font-size:8.5px;color:var(--muted);letter-spacing:0.8px;text-transform:uppercase;margin-top:1px;}
+.clsf{font-family:var(--mono);font-size:8.5px;font-weight:600;
+  padding:2px 8px;border-radius:3px;letter-spacing:2px;
+  background:rgba(239,83,80,0.12);border:1px solid rgba(239,83,80,0.25);color:var(--red);}
 
-        /* ── Main layout ── */
-        #main { display: flex; height: calc(100vh - 56px); }
-        #map-container { flex: 1; position: relative; }
-        #map { height: 100%; width: 100%; }
+/* Scenario switcher */
+.scen-wrap{display:flex;align-items:center;gap:6px;}
+.scen-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-right:4px;}
+.scen-btn{
+  padding:6px 14px;border-radius:6px;border:1px solid rgba(59,130,246,0.18);
+  background:#1E293B;color:#94A3B8;
+  font-family:var(--font);font-size:10.5px;font-weight:700;cursor:pointer;
+  transition:var(--tr);text-transform:uppercase;letter-spacing:0.5px;
+}
+.scen-btn:hover{border-color:var(--blue);color:var(--blue);}
+.scen-btn.a30{background:#d8a73c;border-color:#d8a73c;color:#07101f;box-shadow:0 0 16px rgba(216,167,60,0.22);}
+.scen-btn.a60{background:#ed7d3a;border-color:#ed7d3a;color:#fff;box-shadow:0 0 16px rgba(237,125,58,0.24);}
+.scen-btn.a100{background:#ef5350;border-color:#ef5350;color:#fff;box-shadow:0 0 16px rgba(239,83,80,0.26);}
 
-        /* ── Sidebar ── */
-        #sidebar {
-            width: 360px;
-            background: #0d1b2a;
-            border-left: 1px solid #2a3a4a;
-            overflow-y: auto;
-            transition: width 0.3s;
-        }
-        #sidebar.collapsed { width: 0; overflow: hidden; }
-        #sidebar-toggle {
-            position: absolute;
-            right: 365px;
-            top: 10px;
-            z-index: 1000;
-            background: #0d1b2aee;
-            border: 1px solid #2a3a4a;
-            color: #4fc3f7;
-            padding: 6px 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: right 0.3s;
-        }
-        #sidebar.collapsed ~ #sidebar-toggle { right: 5px; }
+/* Emergency toggle */
+.emer-wrap{display:flex;align-items:center;gap:10px;}
+.emer-lbl{font-size:9px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.8px;}
+.tog{position:relative;width:44px;height:22px;background:rgba(255,255,255,0.06);
+  border-radius:11px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;transition:var(--tr);}
+.tog.on{background:rgba(239,83,80,0.22);border-color:var(--red);box-shadow:0 0 18px rgba(239,83,80,0.4);}
+.tog-knob{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--muted);transition:var(--tr);}
+.tog.on .tog-knob{left:24px;background:var(--red);box-shadow:0 0 8px var(--red);}
 
-        .panel {
-            padding: 12px 16px;
-            border-bottom: 1px solid #1a2a3a;
-        }
-        .panel-title {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #4fc3f7;
-            margin-bottom: 8px;
-            font-weight: 600;
-        }
+.hdr-clock{text-align:right;}
+.hdr-time{font-family:var(--mono);font-size:12px;color:var(--cyan);}
+.hdr-date{font-family:var(--mono);font-size:8px;color:var(--muted);}
 
-        /* ── Crisis alert banner ── */
-        .crisis-banner {
-            background: linear-gradient(135deg, #1a0000, #2d0000);
-            border-bottom: 1px solid #b71c1c;
-            padding: 12px 16px;
-        }
-        .crisis-banner .title {
-            font-size: 12px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 6px;
-        }
-        .crisis-banner .desc {
-            font-size: 11px;
-            line-height: 1.5;
-        }
-        .situation-critical { background: linear-gradient(135deg, #1a0000, #2d0000); border-bottom: 1px solid #b71c1c; }
-        .situation-critical .title { color: #ff5252; }
-        .situation-critical .desc { color: #ffcdd2; }
-        .situation-high { background: linear-gradient(135deg, #1a0a00, #2d1500); border-bottom: 1px solid #e65100; }
-        .situation-high .title { color: #ff9800; }
-        .situation-high .desc { color: #ffe0b2; }
-        .situation-elevated { background: linear-gradient(135deg, #1a1500, #2d2200); border-bottom: 1px solid #f9a825; }
-        .situation-elevated .title { color: #fdd835; }
-        .situation-elevated .desc { color: #fff9c4; }
-        .situation-normal { background: #0d1b2a; border-bottom: 1px solid #2a3a4a; }
-        .situation-normal .title { color: #4fc3f7; }
-        .situation-normal .desc { color: #b0bec5; }
+.strait-badge{
+  padding:4px 12px;border-radius:4px;font-size:10px;font-weight:800;
+  letter-spacing:1.5px;text-transform:uppercase;
+  animation:pulse 2s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.65}}
 
-        /* ── Blockade indicators ── */
-        .blockade-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-        }
-        .blockade-card {
-            background: rgba(255,255,255,0.04);
-            border-radius: 6px;
-            padding: 8px 10px;
-            text-align: center;
-            border: 1px solid transparent;
-        }
-        .blockade-card .num { font-size: 20px; font-weight: 800; }
-        .blockade-card .lbl { font-size: 9px; color: #888; text-transform: uppercase; }
-        .blockade-critical { border-color: #b71c1c; }
-        .blockade-critical .num { color: #ff5252; }
-        .blockade-warning { border-color: #e65100; }
-        .blockade-warning .num { color: #fdd835; }
-        .blockade-info .num { color: #4fc3f7; }
+/* ══════════════════════════════════════
+   MAIN GRID
+══════════════════════════════════════ */
+#grid{
+  flex:1;display:grid;
+  grid-template-columns:340px 1fr 310px;
+  overflow:hidden;
+  min-height:0;
+}
+.col{
+  overflow-y:auto;overflow-x:hidden;
+  padding:10px;display:flex;flex-direction:column;gap:8px;
+}
+.col::-webkit-scrollbar{width:3px;}
+.col::-webkit-scrollbar-track{background:transparent;}
+.col::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+#lcol{border-right:1px solid var(--border);}
+#rcol{border-left:1px solid var(--border);}
 
-        .anchored-bar {
-            margin-top: 8px;
-            background: #1a2a3a;
-            border-radius: 4px;
-            height: 8px;
-            overflow: hidden;
-        }
-        .anchored-bar-fill {
-            height: 100%;
-            border-radius: 4px;
-            background: linear-gradient(90deg, #fdd835, #ff9800);
-            transition: width 0.5s;
-        }
-        .anchored-label {
-            font-size: 11px;
-            color: #aaa;
-            margin-top: 4px;
-            display: flex;
-            justify-content: space-between;
-        }
+/* ══════════════════════════════════════
+   PANELS
+══════════════════════════════════════ */
+.panel{
+  background:var(--bg-panel);border:1px solid var(--border);
+  border-radius:var(--r);overflow:hidden;transition:border-color 0.3s,box-shadow 0.3s;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  flex-shrink:0;
+}
+.panel:hover{border-color:var(--border-h);box-shadow:var(--glow-c);}
+.ph{
+  padding:9px 13px;font-size:9.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:1.5px;color:var(--text);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(17,24,39,0.9);
+}
+.ph-badge{
+  font-size:8px;padding:2px 7px;border-radius:3px;
+  background:rgba(59,130,246,0.08);color:var(--blue);
+  border:1px solid rgba(59,130,246,0.16);font-weight:600;letter-spacing:0.5px;
+}
+.pb{padding:11px 13px;}
 
-        /* ── Vessel states ── */
-        .state-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-        }
-        .state-card {
-            background: rgba(255,255,255,0.04);
-            border-radius: 6px;
-            padding: 8px 10px;
-            text-align: center;
-        }
-        .state-card .num { font-size: 18px; font-weight: 700; }
-        .state-card .lbl { font-size: 9px; color: #888; text-transform: uppercase; }
-        .state-anchored .num { color: #fdd835; }
-        .state-slow .num { color: #ff9800; }
-        .state-maneuvering .num { color: #42a5f5; }
-        .state-transiting .num { color: #66bb6a; }
+/* ══════════════════════════════════════
+   AI EXECUTIVE BRIEF
+══════════════════════════════════════ */
+.ai-panel{border-top:2px solid var(--green);}
+.ai-panel .ph{color:var(--text);background:rgba(15,23,42,0.92);border-bottom-color:rgba(35,53,84,0.36);}
+.ai-panel:hover{border-color:var(--green);box-shadow:var(--glow-g);}
+.ai-body{
+  padding:11px 13px;font-size:10.5px;line-height:1.75;
+  color:var(--text2);min-height:100px;
+  border-bottom:1px solid var(--border);
+}
+.ai-cursor{display:inline-block;width:2px;height:11px;background:var(--blue);
+  margin-left:1px;vertical-align:middle;animation:blink 1s step-end infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.ai-foot{
+  padding:5px 13px;display:flex;justify-content:space-between;
+  font-size:8.5px;font-family:var(--mono);color:var(--muted);
+}
+.ai-live{color:var(--green);}
 
-        /* ── Chart ── */
-        .chart-container { height: 160px; position: relative; }
+/* ══════════════════════════════════════
+   RADAR CHART
+══════════════════════════════════════ */
+.radar-wrap{padding:10px;height:198px;position:relative;}
 
-        /* ── Lists ── */
-        .rank-list { list-style: none; }
-        .rank-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 3px 0;
-            font-size: 12px;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-        }
-        .rank-item:last-child { border-bottom: none; }
-        .rank-name { color: #ccc; }
-        .rank-val { font-weight: 600; color: #4fc3f7; min-width: 28px; text-align: right; }
-        .rank-bar { flex: 1; margin: 0 8px; height: 4px; background: #1a2a3a; border-radius: 2px; overflow: hidden; }
-        .rank-bar-fill { height: 100%; background: #4fc3f7; border-radius: 2px; transition: width 0.3s; }
+/* ══════════════════════════════════════
+   ACTION LIST
+══════════════════════════════════════ */
+.action-list{padding:6px 13px;list-style:none;}
+.action-item{
+  display:flex;align-items:flex-start;gap:7px;
+  padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);
+  font-size:10.5px;transition:background 0.2s;
+}
+.action-item:last-child{border-bottom:none;}
+.action-item:hover{background:rgba(255,255,255,0.015);}
+.ap{
+  flex-shrink:0;width:56px;padding:2px 4px;border-radius:3px;
+  font-size:7.5px;font-weight:800;text-align:center;
+  text-transform:uppercase;letter-spacing:0.3px;
+}
+.ap-imm{background:rgba(239,83,80,0.16);color:var(--red);border:1px solid rgba(239,83,80,0.28);}
+.ap-urg{background:rgba(237,125,58,0.14);color:var(--orange);border:1px solid rgba(237,125,58,0.28);}
+.ap-hi {background:rgba(249,177,66,0.1);color:var(--yellow);border:1px solid rgba(249,177,66,0.22);}
+.ap-mon{background:rgba(122,193,255,0.08);color:var(--cyan);border:1px solid rgba(122,193,255,0.20);}
+.at{color:var(--text2);line-height:1.45;flex:1;}
+.at strong{color:var(--text);}
 
-        /* Zones */
-        .zone-list { list-style: none; }
-        .zone-item { display: flex; justify-content: space-between; padding: 3px 0; font-size: 12px; }
-        .zone-name { color: #aaa; }
-        .zone-count { color: #fdd835; font-weight: 600; }
+/* ══════════════════════════════════════
+   EMERGENCY BANNER
+══════════════════════════════════════ */
+#emer-banner{
+  display:none;
+  background:linear-gradient(135deg,#240806,#3a0b0f);
+  border:1px solid rgba(239,83,80,0.32);border-radius:6px;
+  padding:8px 14px;font-size:10.5px;color:var(--red);
+  font-weight:700;text-align:center;letter-spacing:1px;text-transform:uppercase;
+  animation:emerBlink 1.2s ease-in-out infinite;
+  flex-shrink:0;
+}
+@keyframes emerBlink{0%,100%{opacity:1;box-shadow:0 0 20px rgba(239,83,80,0.3)}50%{opacity:0.85;box-shadow:0 0 40px rgba(239,83,80,0.55)}}
+body.emer #emer-banner{display:block;}
+body.emer #hdr{background:linear-gradient(135deg,rgba(18,3,3,0.98),rgba(10,0,0,0.98));}
+body.emer .panel{border-color:rgba(239,83,80,0.18);}
 
-        /* Transit events */
-        .transit-event {
-            padding: 5px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            font-size: 11px;
-        }
-        .transit-event:last-child { border-bottom: none; }
-        .transit-event .dir {
-            display: inline-block;
-            padding: 1px 5px;
-            border-radius: 3px;
-            font-weight: 700;
-            font-size: 9px;
-            margin-right: 4px;
-        }
-        .dir-in { background: #1b5e20; color: #a5d6a7; }
-        .dir-out { background: #e65100; color: #ffcc80; }
-        .transit-event .vessel-name { color: #ccc; }
-        .transit-event .time { color: #666; font-size: 10px; }
+/* ══════════════════════════════════════
+   ESI GAUGE
+══════════════════════════════════════ */
+.esi-wrap{padding:12px 14px;display:flex;flex-direction:column;align-items:center;gap:14px;}
+.esi-svg-box{position:relative;width:200px;height:115px;}
+.esi-center{
+  position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
+  text-align:center;pointer-events:none;
+}
+.esi-num{font-size:34px;font-weight:900;line-height:1;transition:color 0.5s;}
+.esi-lbl{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.esi-tier{
+  margin-top:7px;font-size:10px;font-weight:800;text-transform:uppercase;
+  letter-spacing:2px;padding:3px 14px;border-radius:4px;transition:all 0.4s;
+}
+.esi-note{
+  margin-top:10px;padding:10px 12px;
+  width:100%;text-align:center;font-size:medium;line-height:1.4;
+  border-radius:10px;background:linear-gradient(135deg,rgba(216,167,60,0.12),rgba(255,255,255,0.03));
+  border:1px solid rgba(216,167,60,0.22);color:rgba(255,241,189,0.95);
+  box-shadow:0 10px 22px rgba(0,0,0,0.16);
+  font-weight:700;letter-spacing:0.3px;
+}
+.esi-note.critical{background:linear-gradient(135deg,rgba(239,83,80,0.12),rgba(255,255,255,0.03));border-color:rgba(239,83,80,0.22);color:#ffb5b2;}
+.esi-note.stable{background:linear-gradient(135deg,rgba(79,195,247,0.12),rgba(255,255,255,0.03));border-color:rgba(79,195,247,0.20);color:#b9f1ff;}
 
-        /* Crisis timeline */
-        .timeline-list { list-style: none; }
-        .timeline-item {
-            padding: 4px 0;
-            border-left: 3px solid;
-            padding-left: 10px;
-            margin-bottom: 4px;
-            font-size: 11px;
-        }
-        .timeline-item .date { color: #888; font-size: 10px; }
-        .timeline-item .event { color: #ccc; }
-        .tl-critical { border-color: #ff5252; }
-        .tl-high { border-color: #ff9800; }
-        .tl-medium { border-color: #fdd835; }
+/* ══════════════════════════════════════
+   KPI CARDS
+══════════════════════════════════════ */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:0 0 0 0;}
+.kpi{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:8px;padding:9px 11px;transition:var(--tr);
+}
+.kpi:hover{border-color:var(--border-h);box-shadow:var(--glow-c);}
+.kpi-v{font-size:20px;font-weight:800;line-height:1.1;transition:color 0.4s;}
+.kpi-u{font-size:8px;color:var(--muted);font-family:var(--mono);}
+.kpi-n{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-top:3px;}
+.kpi-d{font-size:9px;font-weight:600;margin-top:2px;}
+.d-up{color:var(--red);}
+.d-ok{color:var(--green);}
 
-        /* ── Map overlays ── */
-        .vessel-popup {
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            font-size: 13px;
-            line-height: 1.6;
-        }
-        .vessel-popup .name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
-        .vessel-popup .type-badge {
-            display: inline-block; padding: 1px 8px; border-radius: 10px;
-            font-size: 11px; font-weight: 600; margin-bottom: 6px;
-        }
-        .type-tanker { background: #e65100; color: #fff; }
-        .type-cargo { background: #1565c0; color: #fff; }
-        .type-passenger { background: #2e7d32; color: #fff; }
-        .type-fishing { background: #6a1b9a; color: #fff; }
-        .type-military { background: #b71c1c; color: #fff; }
-        .type-unknown { background: #424242; color: #fff; }
-        .track-btn {
-            margin-top: 6px; padding: 4px 12px; background: #1565c0;
-            color: #fff; border: none; border-radius: 4px;
-            cursor: pointer; font-size: 12px;
-        }
-        .track-btn:hover { background: #1976d2; }
+/* ══════════════════════════════════════
+   SCENARIO COMPARISON MATRIX
+══════════════════════════════════════ */
+.sc-matrix{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;padding:10px 13px;}
+.sc-card{border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.07);transition:var(--tr);}
+.sc-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.4);}
+.sc-card.active{border-width:2px;}
+.sc-hd{padding:7px 9px;font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;text-align:center;}
+.sc-bd{padding:7px 9px;}
+.sc-row{display:flex;justify-content:space-between;align-items:center;
+  padding:2.5px 0;font-size:9.5px;border-bottom:1px solid rgba(255,255,255,0.04);}
+.sc-row:last-child{border-bottom:none;}
+.sc-lbl{color:var(--muted);}
+.sc-val{font-weight:700;font-size:10px;}
+.sc-score{text-align:center;padding:5px 0;margin-top:3px;}
+.sc-score-n{font-size:22px;font-weight:900;}
+.sc-score-l{font-size:7.5px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
 
-        .legend {
-            background: rgba(10, 10, 26, 0.92);
-            padding: 8px 12px; border-radius: 6px;
-            font-size: 11px; line-height: 1.7;
-            border: 1px solid #2a3a4a;
-        }
-        .legend-title { font-weight: 700; margin-bottom: 3px; font-size: 12px; }
-        .legend-item { display: flex; align-items: center; gap: 5px; }
-        .legend-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+/* ══════════════════════════════════════
+   CASCADE TIMELINE
+══════════════════════════════════════ */
+.cascade-box{padding:10px 13px;}
+.cascade-track{position:relative;padding-left:22px;}
+.cascade-track::before{
+  content:'';position:absolute;left:8px;top:8px;bottom:8px;width:2px;
+  background:linear-gradient(to bottom,var(--yellow),var(--red));
+}
+.ce{position:relative;padding:5px 0 5px 12px;margin-bottom:2px;}
+.ce-dot{
+  position:absolute;left:-15px;top:9px;width:10px;height:10px;
+  border-radius:50%;border:2px solid;
+}
+.ce-day{font-family:var(--mono);font-size:8.5px;color:var(--muted);}
+.ce-desc{font-size:10.5px;color:var(--text2);line-height:1.4;}
+.ce-imp{font-size:9.5px;font-weight:600;margin-top:1px;}
+.lv-c .ce-dot{border-color:var(--red);background:rgba(239,83,80,0.24);}
+.lv-c .ce-imp{color:var(--red);}
+.lv-h .ce-dot{border-color:var(--orange);background:rgba(237,125,58,0.18);}
+.lv-h .ce-imp{color:var(--orange);}
+.lv-m .ce-dot{border-color:var(--yellow);background:rgba(249,177,66,0.16);}
+.lv-m .ce-imp{color:var(--yellow);}
+.lv-l .ce-dot{border-color:var(--cyan);background:rgba(122,193,255,0.14);}
+.lv-l .ce-imp{color:var(--cyan);}
 
-        .color-toggle {
-            position: absolute; top: 10px; left: 55px; z-index: 1000;
-            background: #0d1b2aee; border: 1px solid #2a3a4a;
-            color: #ccc; padding: 5px 9px; border-radius: 6px;
-            cursor: pointer; font-size: 11px;
-        }
-        .color-toggle:hover { color: #4fc3f7; border-color: #4fc3f7; }
-        .color-toggle.active { color: #4fc3f7; border-color: #4fc3f7; }
-    </style>
+/* ══════════════════════════════════════
+   SANKEY CANVAS
+══════════════════════════════════════ */
+.sankey-box{padding:10px;}
+#sankey{width:100%;display:block;}
+
+/* ══════════════════════════════════════
+   MACRO GAUGES (GDP + CPI)
+══════════════════════════════════════ */
+.macro-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px 13px;}
+.macro-g{display:flex;flex-direction:column;align-items:center;}
+.macro-g svg{width:100%;overflow:visible;}
+.macro-vals{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 13px 10px;}
+.macro-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:7px;padding:7px 10px;text-align:center;
+}
+.macro-card .mv{font-size:15px;font-weight:800;transition:color 0.4s;}
+.macro-card .ml{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-top:2px;}
+
+/* ══════════════════════════════════════
+   SPR PANEL
+══════════════════════════════════════ */
+.spr-box{padding:10px 13px;}
+.spr-meter{
+  background:rgba(255,255,255,0.04);border-radius:6px;height:26px;
+  overflow:hidden;border:1px solid rgba(255,255,255,0.07);
+  position:relative;margin:6px 0;
+}
+.spr-fill{
+  height:100%;border-radius:6px;display:flex;align-items:center;
+  justify-content:center;font-size:10px;font-weight:700;
+  transition:width 0.8s ease,background 0.5s;position:relative;overflow:hidden;
+}
+.spr-fill::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent);
+  animation:shimmer 2.2s linear infinite;
+}
+@keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.spr-lbl-row{display:flex;justify-content:space-between;font-size:8px;color:var(--muted);margin-bottom:7px;}
+.spr-facilities{border-top:1px solid var(--border);padding-top:7px;margin-top:2px;}
+.spr-fac{display:flex;justify-content:space-between;align-items:center;
+  padding:2.5px 0;font-size:9.5px;}
+.spr-fac-name{color:var(--text2);}
+.spr-fac-val{font-family:var(--mono);color:var(--cyan);font-size:9px;}
+
+/* ══════════════════════════════════════
+   FUEL PRICE CARDS
+══════════════════════════════════════ */
+.fuel-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px 13px;}
+.fuel-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:8px;padding:9px 10px;transition:var(--tr);
+}
+.fuel-card:hover{border-color:var(--border-h);}
+.fuel-name{font-size:8.5px;color:var(--muted);text-transform:uppercase;margin-bottom:3px;}
+.fuel-before{font-size:10.5px;color:var(--muted);text-decoration:line-through;}
+.fuel-after{font-size:18px;font-weight:800;transition:color 0.4s;}
+.fuel-per{font-size:7.5px;color:var(--muted);}
+.fuel-badge{margin-top:3px;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;display:inline-block;transition:all 0.4s;}
+
+/* Freight bar */
+.freight-box{padding:0 13px 10px;}
+.freight-lbl{font-size:8.5px;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;}
+.freight-bar-bg{background:rgba(255,255,255,0.04);border-radius:3px;height:5px;overflow:hidden;}
+.freight-bar-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--blue));border-radius:3px;transition:width 0.8s ease;}
+.freight-vals{display:flex;justify-content:space-between;font-size:8.5px;margin-top:3px;}
+
+/* ══════════════════════════════════════
+   STRATEGIC MAP STRIP (above grid)
+══════════════════════════════════════ */
+#map-strip{
+  position:relative;
+  flex-shrink:0;
+  height:220px;
+  border-bottom:1px solid var(--border);
+  background:#060b15;
+  z-index:50;
+  transition:height 0.34s ease, border-bottom-color 0.34s ease;
+}
+#map-strip.expanded{
+  height:420px;
+}
+#map-strip::before{
+  content:'';
+  position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:linear-gradient(to right,rgba(6,11,21,0.55) 0%,transparent 22%,transparent 78%,rgba(6,11,21,0.55) 100%),
+             linear-gradient(to bottom,rgba(6,11,21,0.25) 0%,transparent 30%,transparent 70%,rgba(6,11,21,0.65) 100%);
+}
+#map{height:100%;width:100%;}
+
+/* Map overlay cards */
+.map-overlay{
+  position:absolute;z-index:10;pointer-events:none;
+}
+.map-overlay-left{
+  top:10px;left:12px;
+  display:flex;flex-direction:column;gap:6px;
+  pointer-events:auto;
+}
+.map-overlay-right{
+  top:10px;right:12px;
+  display:flex;flex-direction:column;gap:6px;align-items:flex-end;
+  pointer-events:auto;
+}
+.map-stat-card{
+  background:rgba(6,11,21,0.88);
+  border:1px solid var(--border);
+  border-radius:7px;
+  padding:7px 12px;
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  transition:var(--tr);
+}
+.map-stat-card:hover{border-color:var(--border-h);box-shadow:var(--glow-c);}
+.map-stat-card .ms-title{
+  font-size:8px;color:var(--muted);text-transform:uppercase;
+  letter-spacing:1px;margin-bottom:4px;
+}
+.map-stat-card .ms-row{
+  display:flex;align-items:baseline;gap:5px;
+}
+.map-stat-card .ms-val{
+  font-size:16px;font-weight:800;line-height:1;
+}
+.map-stat-card .ms-unit{
+  font-size:8px;color:var(--muted);font-family:var(--mono);
+}
+.map-stat-card .ms-sub{
+  font-size:8px;color:var(--muted);margin-top:2px;
+}
+.map-route-label{
+  background:rgba(6,11,21,0.82);
+  border:1px solid rgba(216,167,60,0.22);
+  border-radius:5px;padding:4px 10px;
+  font-size:8.5px;color:var(--saffron);
+  font-weight:600;letter-spacing:0.5px;
+  backdrop-filter:blur(10px);
+}
+.map-expand-btn{
+  position:absolute;top:14px;right:16px;
+  z-index:12;
+  padding:8px 12px;
+  border:none;
+  border-radius:999px;
+  background:rgba(255,255,255,0.08);
+  color:var(--text);
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:0.6px;
+  cursor:pointer;
+  transition:var(--tr);
+  backdrop-filter:blur(10px);
+}
+.map-expand-btn:hover{
+  background:rgba(122,193,255,0.18);
+  color:var(--cyan);
+}
+.map-expand-btn:focus{
+  outline:none;
+  box-shadow:0 0 0 2px rgba(122,193,255,0.18);
+}
+.map-center-badge{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  z-index:10;pointer-events:none;
+  text-align:center;
+}
+.map-center-badge .mcb-inner{
+  background:rgba(6,11,21,0.78);
+  border:1px solid rgba(239,83,80,0.4);
+  border-radius:6px;padding:5px 12px;
+  backdrop-filter:blur(10px);
+}
+.map-center-badge .mcb-title{
+  font-size:9px;font-weight:800;text-transform:uppercase;
+  letter-spacing:1.5px;color:var(--red);
+}
+.map-center-badge .mcb-sub{
+  font-size:7.5px;color:var(--muted);margin-top:1px;
+}
+
+/* ══════════════════════════════════════
+   INTEL TICKER
+══════════════════════════════════════ */
+#ticker{
+  background:rgba(4,8,18,0.96);border-top:1px solid var(--border);
+  height:22px;overflow:hidden;display:flex;align-items:center;
+  flex-shrink:0;position:relative;z-index:100;
+}
+.ticker-label{
+  background:var(--saffron);color:#000;font-size:8.5px;font-weight:800;
+  padding:3px 10px;text-transform:uppercase;letter-spacing:1px;white-space:nowrap;flex-shrink:0;
+}
+.ticker-track{overflow:hidden;flex:1;}
+.ticker-inner{
+  display:inline-flex;gap:60px;white-space:nowrap;
+  animation:tickerScroll 40s linear infinite;
+  font-size:9px;color:var(--text2);font-family:var(--mono);
+}
+@keyframes tickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.t-item .t-tag{color:var(--saffron);font-weight:700;}
+.t-item .t-sep{color:var(--muted);margin:0 8px;}
+
+/* ══════════════════════════════════════
+   ANIMATED COUNTER
+══════════════════════════════════════ */
+.glow{text-shadow:0 0 20px currentColor;}
+
+/* Emergency mode overrides */
+body.emer .panel{border-color:rgba(239,83,80,0.18);}
+body.emer #hdr::after{background:var(--red);}
+</style>
 </head>
 <body>
-    <div id="header">
-        <div class="header-left">
-            <div>
-                <h1>
-                    <span class="crisis">Hormuz Strait Monitor</span>
-                    <span class="sub">AI Maritime Risk & Scenario Intelligence</span>
-                </h1>
-            </div>
-            <div class="strait-status" id="strait-badge" style="background:#424242;color:#ccc">LOADING</div>
-        </div>
-        <div class="transit-counter">
-            <div class="transit-period">Port<br>Traffic 24h</div>
-            <div class="transit-sep"></div>
-            <div class="transit-dir transit-in">
-                <div class="num" id="transit-in">--</div>
-                <div class="arrow-label">&#x2192; IN</div>
-            </div>
-            <div class="transit-dir transit-out">
-                <div class="num" id="transit-out">--</div>
-                <div class="arrow-label">OUT &#x2190;</div>
-            </div>
-        </div>
-        <div id="header-stats">
-            <div class="header-stat">
-                <div class="val" id="vessel-count">352</div>
-                <div class="lbl">Active</div>
-            </div>
-            <div class="header-stat">
-                <div class="val" id="total-records">369</div>
-                <div class="lbl">Records</div>
-            </div>
-        </div>
+<div id="app">
+
+<!-- ════════ COMMAND HEADER ════════ -->
+<header id="hdr">
+  <div class="hdr-logo">
+    <div class="hdr-emblem">🛡️</div>
+    <div>
+      <div class="hdr-title">Energy Security Intelligence Command</div>
+      <div class="hdr-sub">🇮🇳 India · Hormuz Crisis AI Platform · Ministry of Petroleum & Natural Gas | PPAC</div>
+    </div>
+    <div class="clsf" style="margin-left:6px">STRATEGIC</div>
+  </div>
+
+  <div class="scen-wrap">
+    <span class="scen-lbl">Closure Scenario</span>
+    <button class="scen-btn a30" id="sb30" data-pct="30">30% Partial</button>
+    <button class="scen-btn"    id="sb60" data-pct="60">60% Severe</button>
+    <button class="scen-btn"    id="sb100" data-pct="100">100% Blockade</button>
+  </div>
+
+  <div class="emer-wrap">
+    <span class="emer-lbl">Emergency Mode</span>
+    <div class="tog" id="emer-tog"><div class="tog-knob"></div></div>
+    <div class="hdr-clock">
+      <div class="hdr-time" id="clk">--:--:-- IST</div>
+      <div class="hdr-date" id="clk-date">---</div>
+    </div>
+    <div class="strait-badge" id="strait-badge"
+      style="background:rgba(216,167,60,0.12);border:1px solid #d8a73c;color:#d8a73c;">
+      30% CLOSURE
+    </div>
+  </div>
+</header>
+
+<!-- ════════ MAIN 3-COLUMN GRID ════════ -->
+<div id="grid">
+
+  <!-- ══ LEFT COLUMN ══ -->
+  <div class="col" id="lcol">
+
+    <!-- AI Executive Situation Report -->
+    <div class="panel ai-panel">
+      <div class="ph">
+        🤖 AI Executive Situation Report
+        <span class="ph-badge ai-live">● LIVE</span>
+      </div>
+      <div class="ai-body">
+        <span id="ai-text"></span><span class="ai-cursor"></span>
+      </div>
+      <div class="ai-foot">
+        <span class="ai-live">Confidence: <span id="ai-conf">94%</span></span>
+        <span>IEA · MoPNG · PPAC · IMF WEO 2024</span>
+      </div>
     </div>
 
-    <div id="main">
-        <div id="map-container">
-            <div id="map"></div>
-            <button class="color-toggle" id="color-mode-btn" title="Toggle vessel coloring">Color: Type</button>
-        </div>
-        <button id="sidebar-toggle" title="Toggle analytics panel">&#9776;</button>
-        <div id="sidebar">
-            <!-- Situation Report (data-driven) -->
-            <div class="crisis-banner" id="situation-banner" style="display:none">
-                <div class="title" id="situation-title">Loading...</div>
-                <div class="desc" id="situation-text"></div>
-            </div>
-
-            <!-- Strait Traffic Analysis -->
-            <div class="panel">
-                <div class="panel-title">Strait Traffic Analysis</div>
-                <div class="blockade-grid">
-                    <div class="blockade-card blockade-critical">
-                        <div class="num" id="bi-strait">--</div>
-                        <div class="lbl">Strait Transits 24h</div>
-                    </div>
-                    <div class="blockade-card blockade-warning">
-                        <div class="num" id="bi-waiting">--</div>
-                        <div class="lbl">Waiting Fleet (6h+)</div>
-                    </div>
-                    <div class="blockade-card blockade-info">
-                        <div class="num" id="bi-active">--</div>
-                        <div class="lbl">Active Vessels</div>
-                    </div>
-                    <div class="blockade-card blockade-warning">
-                        <div class="num" id="bi-waiting24">--</div>
-                        <div class="lbl">Stuck 24h+</div>
-                    </div>
-                </div>
-                <div class="anchored-bar">
-                    <div class="anchored-bar-fill" id="anchored-bar" style="width:0%"></div>
-                </div>
-                <div class="anchored-label">
-                    <span>Anchored ratio</span>
-                    <span id="anchored-pct">--%</span>
-                </div>
-            </div>
-
-            <!-- Vessel States -->
-            <div class="panel">
-                <div class="panel-title">Vessel Status (Live)</div>
-                <div class="state-grid">
-                    <div class="state-card state-transiting">
-                        <div class="num" id="st-transiting">--</div>
-                        <div class="lbl">Transiting</div>
-                    </div>
-                    <div class="state-card state-anchored">
-                        <div class="num" id="st-anchored">--</div>
-                        <div class="lbl">Anchored</div>
-                    </div>
-                    <div class="state-card state-maneuvering">
-                        <div class="num" id="st-maneuvering">--</div>
-                        <div class="lbl">Maneuvering</div>
-                    </div>
-                    <div class="state-card state-slow">
-                        <div class="num" id="st-slow">--</div>
-                        <div class="lbl">Slow / Drift</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Hourly Transit Chart -->
-            <div class="panel">
-                <div class="panel-title">Port Approach Traffic (Hourly)</div>
-                <div class="chart-container">
-                    <canvas id="transit-chart"></canvas>
-                </div>
-            </div>
-
-            <!-- Waiting Fleet Composition -->
-            <div class="panel">
-                <div class="panel-title">Waiting Fleet by Type</div>
-                <ul class="rank-list" id="fleet-type-list"></ul>
-            </div>
-
-            <!-- Anchorage Zones -->
-            <div class="panel">
-                <div class="panel-title">Anchorage Congestion</div>
-                <ul class="zone-list" id="zone-list"></ul>
-            </div>
-
-            <!-- Top Flags -->
-            <div class="panel">
-                <div class="panel-title">Flag States (24h)</div>
-                <ul class="rank-list" id="flag-list"></ul>
-            </div>
-
-            <!-- Top Destinations -->
-            <div class="panel">
-                <div class="panel-title">Declared Destinations (24h)</div>
-                <ul class="rank-list" id="dest-list"></ul>
-            </div>
-
-            <!-- Recent Gate Crossings -->
-            <div class="panel">
-                <div class="panel-title">Recent Port Crossings</div>
-                <div id="recent-transits"></div>
-            </div>
-
-            <!-- Crisis Timeline -->
-            <div class="panel">
-                <div class="panel-title">Crisis Timeline</div>
-                <ul class="timeline-list" id="timeline-list"></ul>
-            </div>
-        </div>
+    <!-- National Resilience Radar -->
+    <div class="panel">
+      <div class="ph">
+        🎯 National Resilience Radar
+        <span class="ph-badge">vs Baseline</span>
+      </div>
+      <div class="radar-wrap">
+        <canvas id="radar"></canvas>
+      </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-    <script>
-        // ── Config ──
-        const TYPE_COLORS = {
-            'Tanker': '#e65100', 'Cargo': '#1565c0', 'Passenger': '#2e7d32',
-            'Fishing/Towing/Dredging': '#6a1b9a', 'Military/Sailing/Pleasure': '#b71c1c',
-            'HSC': '#00838f', 'Unknown': '#616161', 'Other': '#455a64', 'WIG': '#f57f17',
-        };
-        const STATE_COLORS = {
-            'anchored': '#fdd835', 'slow': '#ff9800',
-            'maneuvering': '#42a5f5', 'transiting': '#66bb6a', 'unknown': '#616161',
-        };
+    <!-- AI Recommended Actions -->
+    <div class="panel">
+      <div class="ph">
+        ⚡ AI Recommended Actions
+        <span class="ph-badge" id="act-badge">5 Actions</span>
+      </div>
+      <ul class="action-list" id="act-list"></ul>
+    </div>
 
-        let colorMode = 'type';
+  </div><!-- /lcol -->
 
-        function getTypeColor(type) {
-            for (const [key, color] of Object.entries(TYPE_COLORS)) {
-                if (type && type.includes(key.split('/')[0])) return color;
-            }
-            return TYPE_COLORS['Unknown'];
-        }
-        function getTypeClass(type) {
-            if (!type) return 'type-unknown';
-            if (type.includes('Tanker')) return 'type-tanker';
-            if (type.includes('Cargo')) return 'type-cargo';
-            if (type.includes('Passenger')) return 'type-passenger';
-            if (type.includes('Fishing')) return 'type-fishing';
-            if (type.includes('Military')) return 'type-military';
-            return 'type-unknown';
-        }
-        function getVesselColor(vessel) {
-            if (colorMode === 'state') {
-                const spd = vessel.speed;
-                if (spd == null || spd >= 102.3) return STATE_COLORS['unknown'];
-                if (spd < 0.5) return STATE_COLORS['anchored'];
-                if (spd < 3) return STATE_COLORS['slow'];
-                if (spd < 8) return STATE_COLORS['maneuvering'];
-                return STATE_COLORS['transiting'];
-            }
-            return getTypeColor(vessel.type);
-        }
+  <!-- ══ CENTER COLUMN ══ -->
+  <div class="col" id="ccol">
 
-        // ── Map setup ──
-        const map = L.map('map', { center: [25.5, 55.5], zoom: 7, zoomControl: true });
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19,
-        }).addTo(map);
-        // ======================================================
-// DEMO VESSELS
-// ======================================================
+    <!-- ════════ STRATEGIC MAP STRIP ════════ -->
+    <div id="map-strip">
+      <!-- Left overlay: live scenario stats -->
+      <div class="map-overlay map-overlay-left">
+        <div class="map-stat-card">
+          <div class="ms-title">🇮🇳 India — Hormuz Exposure</div>
+          <div class="ms-row">
+            <span class="ms-val" id="ms-dep" style="color:var(--saffron)">3.1</span>
+            <span class="ms-unit">mb/d via Strait</span>
+          </div>
+          <div class="ms-sub">64.5% Gulf dependency · 4.8 mb/d total imports</div>
+        </div>
+        <div class="map-stat-card">
+          <div class="ms-title">⚡ Active Scenario Impact</div>
+          <div class="ms-row">
+            <span class="ms-val" id="ms-gap" style="color:var(--yellow)">0.51</span>
+            <span class="ms-unit">mb/d gap</span>
+          </div>
+          <div class="ms-sub" id="ms-brent">Brent +$8 → $90/bbl</div>
+        </div>
+        <div class="map-route-label">🛣️ Gulf → Arabian Sea → Mumbai · ~2,400 nm</div>
+      </div>
 
-const vesselTypes = [
-    { name: "Tanker", color: "#ff5252" },
-    { name: "Cargo", color: "#42a5f5" },
-    { name: "Container", color: "#66bb6a" },
-    { name: "LNG Carrier", color: "#ffca28" }
-];
-const destinations = [
-    "Dubai",
-    "Jebel Ali",
-    "Fujairah",
-    "Bandar Abbas",
-    "Doha",
-    "Mumbai"
-];
-const vesselMarkers = [];
-const vesselIcons = {
-    "Tanker": "🛢️",
-    "Cargo": "🚢",
-    "Container": "🚛",
-    "LNG Carrier": "⛴️"
+      <!-- Center badge over Hormuz -->
+      <div class="map-center-badge">
+        <div class="mcb-inner">
+          <div class="mcb-title" id="ms-closure">30% CLOSURE · PARTIAL DISRUPTION</div>
+          <div class="mcb-sub">Strait of Hormuz · 21°N 57°E · ~33 km wide</div>
+        </div>
+      </div>
+
+      <!-- Right overlay: SPR + Fuel price -->
+      <div class="map-overlay map-overlay-right">
+        <div class="map-stat-card">
+          <div class="ms-title">🛢️ SPR Buffer</div>
+          <div class="ms-row">
+            <span class="ms-val" id="ms-spr" style="color:var(--cyan)">56.6</span>
+            <span class="ms-unit">days</span>
+          </div>
+          <div class="ms-sub">Padur · Vizag · Mangalore — 5.33 MMT</div>
+        </div>
+        <div class="map-stat-card">
+          <div class="ms-title">⛽ Petrol Crisis Price</div>
+          <div class="ms-row">
+            <span class="ms-val" id="ms-petrol" style="color:var(--orange)">₹131.89</span>
+            <span class="ms-unit">/L</span>
+          </div>
+          <div class="ms-sub" id="ms-petrol-delta">+₹37.17 vs ₹94.72 baseline</div>
+        </div>
+        <div class="map-route-label" id="ms-esi-badge">📊 ESI: 28 / 100 · ELEVATED</div>
+      </div>
+      <button class="map-expand-btn" id="expand-map-btn" type="button" title="Expand map">⤢ Expand</button>
+
+      <div id="map"></div>
+    </div><!-- /map-strip -->
+
+    <!-- Emergency banner (hidden by default) -->
+    <div id="emer-banner">
+      🚨 EMERGENCY PROTOCOL ACTIVE — NATIONAL ENERGY EMERGENCY — FUEL-RED RATIONING IMMINENT 🚨
+    </div>
+
+    <!-- Row: ESI Gauge + KPI cards -->
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start;">
+      <!-- ESI Gauge -->
+      <div class="panel" style="width:220px;">
+        <div class="ph">📊 Economic Shock Index</div>
+        <div class="esi-wrap">
+          <div class="esi-svg-box">
+            <svg id="esi-svg" viewBox="0 0 200 115" width="200" height="115">
+              <!-- Zone fills -->
+              <path d="M20 100 A80 80 0 0 1 71 31" fill="none" stroke="rgba(79,195,247,0.14)" stroke-width="16" stroke-linecap="butt"/>
+              <path d="M71 31 A80 80 0 0 1 129 31" fill="none" stroke="rgba(216,167,60,0.18)" stroke-width="16" stroke-linecap="butt"/>
+              <path d="M129 31 A80 80 0 0 1 180 100" fill="none" stroke="rgba(239,83,80,0.18)" stroke-width="16" stroke-linecap="butt"/>
+              <!-- Track -->
+              <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="13" stroke-linecap="round"/>
+              <!-- Fill arc -->
+              <path id="esi-arc" d="M20 100 A80 80 0 0 1 70 32" fill="none" stroke="#d8a73c" stroke-width="13" stroke-linecap="round" style="transition:d 0.8s ease,stroke 0.4s"/>
+              <!-- Needle -->
+              <line id="esi-needle" x1="100" y1="100" x2="100" y2="26"
+                stroke="rgba(255,255,255,0.9)" stroke-width="2" stroke-linecap="round"
+                style="transform-origin:100px 100px;transition:transform 0.8s ease"/>
+              <circle cx="100" cy="100" r="5" fill="#fff" opacity="0.2"/>
+              <circle cx="100" cy="100" r="3" fill="#fff"/>
+              <!-- Scale labels -->
+              <text x="10" y="112" fill="#4fd299" font-size="8" font-family="Inter" font-weight="600">LOW</text>
+              
+              <text x="190" y="112" fill="#ef5350" font-size="8" font-family="Inter" font-weight="600" text-anchor="end">HIGH</text>
+            </svg>
+            <div class="esi-center">
+              <div class="esi-num glow" id="esi-num" style="color:var(--saffron);">28</div>
+              <div class="esi-lbl">ESI / 100</div>
+            </div>
+          </div>
+          <div class="esi-tier" id="esi-tier" style="background:rgba(216,167,60,0.1);border:1px solid #d8a73c;color:#d8a73c;">ELEVATED</div>
+          <div class="esi-note" id="esi-note">⚠️ Elevated pressure: prep SPR drawdown and monitor Hormuz flows.</div>
+        </div>
+      </div>
+
+      <!-- KPI Stack -->
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <div class="kpi">
+          <div class="kpi-v" id="kv-gap" style="color:var(--orange)">0.51</div>
+          <div class="kpi-u">mb/d</div>
+          <div class="kpi-n">Supply Gap</div>
+          <div class="kpi-d d-up" id="kd-gap">↑ from 0 baseline</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-v" id="kv-brent" style="color:var(--red)">$90</div>
+          <div class="kpi-u">USD/bbl</div>
+          <div class="kpi-n">Brent Crisis Price</div>
+          <div class="kpi-d d-up" id="kd-brent">↑ +$8 vs baseline</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-v" id="kv-spr" style="color:var(--cyan)">56.6</div>
+          <div class="kpi-u">days</div>
+          <div class="kpi-n">SPR Buffer</div>
+          <div class="kpi-d d-ok" id="kd-spr">→ Adequate</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-v" id="kv-gdp" style="color:var(--red)">0.3%</div>
+          <div class="kpi-u">GDP</div>
+          <div class="kpi-n">Contraction Risk</div>
+          <div class="kpi-d d-up" id="kd-gdp">↓ from baseline</div>
+        </div>
+      </div>
+    </div><!-- /ESI+KPI row -->
+
+    <!-- Scenario Comparison Matrix -->
+    <div class="panel">
+      <div class="ph">📈 Scenario Comparison Matrix — 30% / 60% / 100% Closure</div>
+      <div class="sc-matrix" id="sc-matrix"><!-- filled by JS --></div>
+    </div>
+
+    <!-- Supply Chain Cascade Timeline -->
+    <div class="panel">
+      <div class="ph">⏱️ Supply Chain Cascade Timeline</div>
+      <div class="cascade-box">
+        <div class="cascade-track" id="cascade"></div>
+      </div>
+    </div>
+
+    <!-- Import Dependency Sankey -->
+    <div class="panel">
+      <div class="ph">🔄 Import Dependency Flow — Gulf Suppliers → India Refinery → Economic Sectors</div>
+      <div class="sankey-box">
+        <canvas id="sankey" height="215"></canvas>
+      </div>
+    </div>
+
+  </div><!-- /ccol -->
+
+  <!-- ══ RIGHT COLUMN ══ -->
+  <div class="col" id="rcol">
+
+    <!-- Macro Gauges: GDP + CPI -->
+    <div class="panel">
+      <div class="ph">📉 Macroeconomic Impact Gauges</div>
+      <div class="macro-grid">
+        <div class="macro-g">
+          <svg id="gdp-svg" viewBox="0 0 120 72" style="overflow:visible">
+            <path d="M10 65 A50 50 0 0 1 110 65" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="11" stroke-linecap="round"/>
+            <path id="gdp-arc" d="M10 65 A50 50 0 0 1 35 28" fill="none" stroke="#ef5350" stroke-width="11" stroke-linecap="round" style="transition:all 0.8s ease"/>
+            <text x="60" y="60" text-anchor="middle" fill="#ef5350" font-size="15" font-weight="800" font-family="Inter" id="gdp-txt">0.3%</text>
+            <text x="60" y="71" text-anchor="middle" fill="#2e4560" font-size="7" font-family="Inter">GDP IMPACT</text>
+          </svg>
+        </div>
+        <div class="macro-g">
+          <svg id="cpi-svg" viewBox="0 0 120 72" style="overflow:visible">
+            <path d="M10 65 A50 50 0 0 1 110 65" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="11" stroke-linecap="round"/>
+            <path id="cpi-arc" d="M10 65 A50 50 0 0 1 35 28" fill="none" stroke="#ed7d3a" stroke-width="11" stroke-linecap="round" style="transition:all 0.8s ease"/>
+            <text x="60" y="60" text-anchor="middle" fill="#ed7d3a" font-size="15" font-weight="800" font-family="Inter" id="cpi-txt">61bps</text>
+            <text x="60" y="71" text-anchor="middle" fill="#2e4560" font-size="7" font-family="Inter">CPI INFLATION</text>
+          </svg>
+        </div>
+      </div>
+      <div class="macro-vals">
+        <div class="macro-card" style="border-color:rgba(239,83,80,0.2)">
+          <div class="mv" id="gdp-full" style="color:var(--red)">-0.3%</div>
+          <div class="ml">GDP Contraction</div>
+        </div>
+        <div class="macro-card" style="border-color:rgba(237,125,58,0.18)">
+          <div class="mv" id="cpi-full" style="color:var(--orange)">+61 bps</div>
+          <div class="ml">CPI Inflation Rise</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPR Timeline -->
+    <div class="panel">
+      <div class="ph">🛢️ Strategic Petroleum Reserve Timeline</div>
+      <div class="spr-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+          <div style="font-size:9.5px;color:var(--text2)">SPR Cover at Disruption Rate</div>
+          <div style="font-family:var(--mono);font-size:12.5px;font-weight:700;" id="spr-days">56.6 days</div>
+        </div>
+        <div class="spr-meter">
+          <div class="spr-fill" id="spr-fill" style="width:85%;background:linear-gradient(90deg,#4fd299,#7ce4b2);color:rgba(0,0,0,0.7);">
+            <span id="spr-fill-lbl">ADEQUATE</span>
+          </div>
+        </div>
+        <div class="spr-lbl-row">
+          <span>Day 0</span><span>Day 15</span><span>Day 30</span><span id="spr-ex-lbl">Day ~57</span>
+        </div>
+        <div class="spr-facilities">
+          <div class="spr-fac"><span class="spr-fac-name">🏭 Padur (Karnataka)</span><span class="spr-fac-val">4.5 MMT</span></div>
+          <div class="spr-fac"><span class="spr-fac-name">🏭 Visakhapatnam (AP)</span><span class="spr-fac-val">1.3 MMT</span></div>
+          <div class="spr-fac"><span class="spr-fac-name">🏭 Mangalore (KA)</span><span class="spr-fac-val">1.5 MMT</span></div>
+          <div class="spr-fac" style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px;">
+            <span class="spr-fac-name" style="font-weight:700;color:var(--text)">Total SPR</span>
+            <span class="spr-fac-val" style="color:var(--saffron);">5.33 MMT (~39 mb)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fuel Price Impact -->
+    <div class="panel">
+      <div class="ph">⛽ Retail Fuel Price Impact</div>
+      <div class="fuel-grid">
+        <div class="fuel-card">
+          <div class="fuel-name">⛽ Petrol</div>
+          <div class="fuel-before" id="fp-pb">₹94.72</div>
+          <div class="fuel-after" id="fp-pa" style="color:var(--orange)">₹131.89</div>
+          <div class="fuel-per">/litre · Delhi</div>
+          <div class="fuel-badge" id="fp-pb2" style="background:rgba(237,125,58,0.14);color:var(--orange)">+₹37.17</div>
+        </div>
+        <div class="fuel-card">
+          <div class="fuel-name">🚛 Diesel</div>
+          <div class="fuel-before" id="fd-pb">₹87.62</div>
+          <div class="fuel-after" id="fd-pa" style="color:var(--orange)">₹121.07</div>
+          <div class="fuel-per">/litre · Delhi</div>
+          <div class="fuel-badge" id="fd-pb2" style="background:rgba(237,125,58,0.14);color:var(--orange)">+₹33.45</div>
+        </div>
+      </div>
+      <div class="freight-box">
+        <div class="freight-lbl">Cape Rerouting Freight Surcharge</div>
+        <div class="freight-bar-bg"><div class="freight-bar-fill" id="freight-fill" style="width:30%"></div></div>
+        <div class="freight-vals">
+          <span style="color:var(--muted)">$0 baseline</span>
+          <span id="freight-val" style="color:var(--cyan);font-family:var(--mono);">+$0.9/bbl</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map moved above grid — right column ends here -->
+
+  </div><!-- /rcol -->
+
+</div><!-- /grid -->
+
+<!-- ════════ INTEL TICKER ════════ -->
+<div id="ticker">
+  <div class="ticker-label">🛰 INTEL FEED</div>
+  <div class="ticker-track">
+    <div class="ticker-inner" id="ticker-inner">
+      <!-- items duplicated for seamless loop -->
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+let activePct  = 30;
+let isEmergency = false;
+let indiaData  = null;
+let radarChart = null;
+let map = null;
+let typeTimer  = null;
+
+// ═══════════════════════════════════════════════════════
+// LIVE CLOCK (IST = UTC+5:30)
+// ═══════════════════════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  const ist = new Date(now.getTime() + (5.5 * 3600000) - (now.getTimezoneOffset() * 60000));
+  const hms = ist.toTimeString().slice(0, 8) + ' IST';
+  const dmy = ist.toDateString();
+  document.getElementById('clk').textContent = hms;
+  document.getElementById('clk-date').textContent = dmy;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ═══════════════════════════════════════════════════════
+// TYPEWRITER ANIMATION
+// ═══════════════════════════════════════════════════════
+const AI_BRIEFS = {
+  30: `SITUATION ASSESSMENT — PARTIAL DISRUPTION. Intelligence confirms a 30% reduction in Strait of Hormuz tanker throughput following regional military escalation. India's immediate exposure stands at 0.93 mb/d of crude supply at risk — primarily from Iraq (1.04 mb/d) and Saudi Arabia (0.68 mb/d) routes. Strategic Petroleum Reserves at Padur, Visakhapatnam, and Mangalore have been placed on readiness standby. Brent crude futures indicate an $8–$12/bbl premium. Alternative routing via Cape of Good Hope adds 18–22 days and ~$0.9/bbl freight cost. India's non-Gulf flex capacity (1.4 mb/d) partially cushions the impact — net supply gap estimated at 0.51 mb/d. SPR buffer remains adequate at 56.6 days at gap rate. Resilience Assessment: MODERATE. Recommend activating SPR draw and emergency procurement from alternate sources.`,
+  60: `CRISIS ALERT — SEVERE DISRUPTION. Active hostilities and Iranian mine-laying operations have triggered Emergency Petroleum Act protocols at Cabinet level. India faces 1.86 mb/d of disrupted Gulf crude — Iraq and Saudi Arabia routes critically impaired. Emergency cargo diversions from Russia and US underway, but freight costs have tripled. Cape of Good Hope routing operational, adding 20+ days to supply chain. Petrol prices projected to breach ₹197/litre within 14 days without excise intervention. Net supply gap: 1.02 mb/d. SPR buffer reduced to 28.6 days — entering CAUTION zone. Fiscal impact risk: GDP contraction of 0.6%, CPI surge of +122 bps. IEA coordinated stock release under active discussion. Resilience Assessment: CRITICAL. Immediate government intervention required.`,
+  100: `EMERGENCY — FULL HORMUZ BLOCKADE DECLARED. Complete chokepoint closure has halted all 3.1 mb/d of India's Hormuz-transit crude. SPR facilities at Padur, Visakhapatnam, and Mangalore activated at maximum draw rate — total exhaustion projected in 9.5 days at current consumption. Emergency Petroleum Act fully invoked. Fuel rationing protocol FUEL-RED initiated. Transport sector on priority-only allocation. Industrial non-essential consumption suspended by executive order. Brent at $130/bbl — highest level since 2008. Petrol projected at ₹317/litre; diesel at ₹288/litre. GDP contraction risk: 1.0%. CPI inflation surge: +205 bps. Joint task force coordinating with IEA, G7, and strategic partners. UN Security Council session convened. Resilience Assessment: CRITICAL FAILURE. National Energy Emergency declaration required.`
 };
 
-for (let i = 0; i < 35; i++) {
-
-    const lat = 25.1 + Math.random() * 2.0;
-    const lon = 55.2 + Math.random() * 2.0;
-
-    const vessel = vesselTypes[
-        Math.floor(Math.random() * vesselTypes.length)
-    ];
-    const emoji = vesselIcons[vessel.name] || "🚢";
-    const destination =
-        destinations[Math.floor(Math.random() * destinations.length)];
-
-    const marker = L.marker([lat, lon], {
-    icon: L.divIcon({
-        html: `<div style="
-            font-size:20px;
-            transform: rotate(${Math.floor(Math.random()*360)}deg);
-            text-shadow:0 0 6px black;
-        ">${emoji}</div>`,
-        className: "",
-        iconSize: [20,20],
-        iconAnchor: [10,10]
-    })
-}).addTo(map);
-
-    marker.bindPopup(`
-        <b>${vessel.name}</b><br>
-        Status: Active<br>
-        Speed: ${(8 + Math.random() * 10).toFixed(1)} kn<br>
-        
-    `);
-
-    vesselMarkers.push(marker);
+function typeWriter(targetEl, text, speed = 22) {
+  if (typeTimer) clearTimeout(typeTimer);
+  targetEl.textContent = '';
+  let i = 0;
+  function step() {
+    if (i < text.length) {
+      targetEl.textContent += text[i++];
+      typeTimer = setTimeout(step, speed);
+    }
+  }
+  step();
 }
-setInterval(() => {
 
-    vesselMarkers.forEach(marker => {
+// ═══════════════════════════════════════════════════════
+// SVG ARC HELPERS
+// ═══════════════════════════════════════════════════════
+function arcPath(cx, cy, r, fraction) {
+  if (fraction <= 0.001) return `M ${cx - r} ${cy} L ${cx - r + 0.5} ${cy}`;
+  if (fraction > 0.999) fraction = 0.999;
+  const a = Math.PI * (1 - fraction);
+  const x = cx + r * Math.cos(a);
+  const y = cy - r * Math.sin(a);
+  const lg = 0;
+  return `M ${cx - r} ${cy} A ${r} ${r} 0 ${lg} 1 ${x.toFixed(2)} ${y.toFixed(2)}`;
+}
 
-        const pos = marker.getLatLng();
+// ═══════════════════════════════════════════════════════
+// ESI GAUGE
+// ═══════════════════════════════════════════════════════
+const ESI_SCORES = { 30: 28, 60: 52, 100: 78 };
+const ESI_TIERS  = [
+  { max: 25,  label: 'STABLE',       color: '#4fd299', note: 'Stable posture: continue monitoring energy flows and reserve levels.' },
+  { max: 50,  label: 'ELEVATED',     color: '#d8a73c', note: 'Elevated pressure: prep SPR drawdown and monitor Hormuz flows.' },
+  { max: 75,  label: 'CRITICAL',     color: '#ed7d3a', note: 'Critical alert: secure alternate routes and tighten fuel allocation.' },
+  { max: 100, label: 'CATASTROPHIC', color: '#ef5350', note: 'Catastrophic risk: national emergency response required.' },
+];
 
-        marker.setLatLng([
-            pos.lat + (Math.random() - 0.5) * 0.01,
-            pos.lng + (Math.random() - 0.5) * 0.01
-        ]);
+function esiColor(score) {
+  for (const t of ESI_TIERS) if (score <= t.max) return t.color;
+  return '#ef5350';
+}
+function esiTier(score) {
+  for (const t of ESI_TIERS) if (score <= t.max) return t;
+  return ESI_TIERS[3];
+}
 
-    });
+function updateESI(score) {
+  const col = esiColor(score);
+  const tier = esiTier(score);
 
-}, 4000);
-        // BBOX
-        L.rectangle([[22.0, 48.0], [30.5, 60.0]], {
-            color: '#4fc3f7', weight: 1, dashArray: '8 4', fill: false, interactive: false, opacity: 0.3,
-        }).addTo(map);
+  // Arc
+  const cx = 100, cy = 100, r = 80;
+  const frac = Math.min(Math.max(score / 100, 0), 0.999);
+  const a = Math.PI * (1 - frac);
+  const ex = cx + r * Math.cos(a);
+  const ey = cy - r * Math.sin(a);
+  const lg = 0;
+  const d  = frac <= 0.001 ? `M ${cx - r} ${cy} L ${cx - r + 0.5} ${cy}` :
+    `M ${cx - r} ${cy} A ${r} ${r} 0 ${lg} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`;
 
-        let markers = L.layerGroup().addTo(map);
-        let trackLayer = L.layerGroup().addTo(map);
-        let gateLayer = L.layerGroup().addTo(map);
-        let zoneLayer = L.layerGroup().addTo(map);
-        let dangerLayer = L.layerGroup().addTo(map);
+  const arc = document.getElementById('esi-arc');
+  arc.setAttribute('d', d);
+  arc.setAttribute('stroke', col);
 
-        // Legend
-        const legend = L.control({ position: 'bottomright' });
-        legend.onAdd = function() {
-            const div = L.DomUtil.create('div', 'legend');
-            div.innerHTML = '<div class="legend-title">Vessel Types</div>';
-            for (const [type, color] of Object.entries(TYPE_COLORS)) {
-                if (type === 'WIG') continue;
-                div.innerHTML += `<div class="legend-item"><span class="legend-dot" style="background:${color}"></span>${type}</div>`;
-            }
-            return div;
-        };
-        legend.addTo(map);
+  // Needle
+  const angle = (frac * 180) - 90;
+  document.getElementById('esi-needle').style.transform = `rotate(${angle}deg)`;
 
-        // ── Gate lines, danger zone, zones ──
-        const GATE_COLORS = ['#ff1744', '#00e676', '#448aff'];
-        async function loadOverlays() {
-            try {
-                const res = await fetch('/api/analytics/gate');
-                const data = await res.json();
+  // Score number (animated)
+  animateCounter(document.getElementById('esi-num'), parseFloat(document.getElementById('esi-num').textContent) || 0, score, 700, v => Math.round(v));
+  document.getElementById('esi-num').style.color = col;
 
-                gateLayer.clearLayers();
-                zoneLayer.clearLayers();
-                dangerLayer.clearLayers();
+  // Tier badge
+  const tb = document.getElementById('esi-tier');
+  tb.textContent = tier.label;
+  tb.style.cssText = `margin-top:7px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:2px;padding:3px 14px;border-radius:4px;background:${tier.color}18;border:1px solid ${tier.color};color:${tier.color};transition:all 0.4s;`;
 
-                // DANGER ZONE — red-tinted polygon over the Strait
-                if (data.danger_zone && data.danger_zone.length > 0) {
-                    const dzCoords = data.danger_zone.map(p => [p.lat, p.lon]);
-                    L.polygon(dzCoords, {
-                        color: '#ff1744',
-                        weight: 2,
-                        dashArray: '6 4',
-                        fillColor: '#ff1744',
-                        fillOpacity: 0.12,
-                        interactive: true,
-                    }).bindTooltip('Strait of Hormuz — AI Maritime Intelligence Zone', {
-                        sticky: true,
-                    }).addTo(dangerLayer);
+  const note = document.getElementById('esi-note');
+  note.textContent = tier.note;
+  note.className = `esi-note ${tier.label.toLowerCase()}`;
+}
 
-                    // Label — will be updated by blockade data
-                    const centerLat = dzCoords.reduce((s, c) => s + c[0], 0) / dzCoords.length;
-                    const centerLon = dzCoords.reduce((s, c) => s + c[1], 0) / dzCoords.length;
-                    window._dangerLabel = L.marker([centerLat, centerLon], {
-                        icon: L.divIcon({
-                            html: '<div id="danger-label" style="color:#00e5ff;font-size:12px;font-weight:900;text-shadow:2px 2px 4px #000;white-space:nowrap;text-align:center">🛰 AI MARITIME INTELLIGENCE<br><span style="font-size:9px;font-weight:400;color:#b2ebf2">Live Scenario Simulation</span></div>',
-                            className: '', iconSize: [130, 30],
-                        }),
-                        interactive: false,
-                    });
-                    window._dangerLabel.addTo(dangerLayer);
-                }
+// ═══════════════════════════════════════════════════════
+// ANIMATED COUNTER
+// ═══════════════════════════════════════════════════════
+function animateCounter(el, from, to, dur = 600, fmt = v => v) {
+  const t0 = performance.now();
+  function step(now) {
+    const p = Math.min((now - t0) / dur, 1);
+    const e = 1 - Math.pow(1 - p, 3);
+    el.textContent = fmt(from + (to - from) * e);
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
 
-                // Gate lines
-                let colorIdx = 0;
-                for (const [name, gate] of Object.entries(data.gates)) {
-                    const color = GATE_COLORS[colorIdx % GATE_COLORS.length];
-                    colorIdx++;
+// ═══════════════════════════════════════════════════════
+// MACRO GAUGES (GDP + CPI)
+// ═══════════════════════════════════════════════════════
+function updateMacro(gdpPct, cpiBps) {
+  // GDP: max display = 2.0%
+  const gdpFrac = Math.min(gdpPct / 2.0, 1);
+  document.getElementById('gdp-arc').setAttribute('d', arcPath(60, 65, 50, gdpFrac));
+  document.getElementById('gdp-txt').textContent = gdpPct.toFixed(1) + '%';
+  document.getElementById('gdp-full').textContent = '-' + gdpPct.toFixed(1) + '%';
 
-                    L.polyline([[gate.a.lat, gate.a.lon], [gate.b.lat, gate.b.lon]], {
-                        color: color, weight: 3, dashArray: '10 6', opacity: 0.9,
-                    }).bindTooltip(name).addTo(gateLayer);
+  // CPI: max display = 250 bps
+  const cpiFrac = Math.min(cpiBps / 250, 1);
+  document.getElementById('cpi-arc').setAttribute('d', arcPath(60, 65, 50, cpiFrac));
+  document.getElementById('cpi-txt').textContent = cpiBps + 'bps';
+  document.getElementById('cpi-full').textContent = '+' + cpiBps + ' bps';
+}
 
-                    [gate.a, gate.b].forEach(pt => {
-                        gateLayer.addLayer(L.circleMarker([pt.lat, pt.lon], {
-                            radius: 4, fillColor: color, color: '#fff', weight: 1, fillOpacity: 0.9,
-                        }));
-                    });
+// ═══════════════════════════════════════════════════════
+// SPR METER
+// ═══════════════════════════════════════════════════════
+function updateSPR(days) {
+  const fill = document.getElementById('spr-fill');
+  const lbl  = document.getElementById('spr-fill-lbl');
+  const daysEl = document.getElementById('spr-days');
+  const exLbl  = document.getElementById('spr-ex-lbl');
 
-                    const midLat = (gate.a.lat + gate.b.lat) / 2;
-                    const midLon = (gate.a.lon + gate.b.lon) / 2;
-                    const shortName = name.length > 22 ? name.substring(0, 20) + '..' : name;
-                    gateLayer.addLayer(L.marker([midLat, midLon + 0.12], {
-                        icon: L.divIcon({
-                            html: `<div style="color:${color};font-size:9px;font-weight:700;text-shadow:1px 1px 2px #000;white-space:nowrap">${shortName}</div>`,
-                            className: '', iconSize: [110, 12],
-                        }),
-                        interactive: false,
-                    }));
-                }
+  const maxDays = 70;
+  const pct = Math.min(days / maxDays * 100, 100);
 
-                // Anchorage zones
-                for (const [name, zone] of Object.entries(data.anchorage_zones)) {
-                    L.circle([zone.lat, zone.lon], {
-                        radius: zone.radius_nm * 1852,
-                        color: '#fdd835', weight: 1, dashArray: '4 4',
-                        fillColor: '#fdd835', fillOpacity: 0.05, interactive: true,
-                    }).bindTooltip(name, { sticky: true }).addTo(zoneLayer);
-                }
+  let color, status;
+  if (days > 40) { color = 'linear-gradient(90deg,#4fd299,#7ce4b2)'; status = 'ADEQUATE'; }
+  else if (days > 20) { color = 'linear-gradient(90deg,#ed7d3a,#f9b142)'; status = 'CAUTION'; }
+  else if (days > 10) { color = 'linear-gradient(90deg,#ed7d3a,#ef5350)'; status = 'CRITICAL'; }
+  else { color = 'linear-gradient(90deg,#ef5350,#d82b2b)'; status = 'IMMINENT DEPLETION'; }
 
-                // Crisis timeline
-                if (data.crisis_timeline) {
-                    const tl = document.getElementById('timeline-list');
-                    tl.innerHTML = data.crisis_timeline.map(e => {
-                        const cls = e.severity === 'critical' ? 'tl-critical' : e.severity === 'high' ? 'tl-high' : 'tl-medium';
-                        return `<li class="timeline-item ${cls}"><span class="date">${e.date}</span><br><span class="event">${e.event}</span></li>`;
-                    }).join('');
-                }
-            } catch (e) {
-                console.error('Failed to load overlays:', e);
-            }
+  const txtColor = days > 20 ? 'rgba(0,0,0,0.75)' : '#fff';
+  fill.style.cssText = `width:${pct.toFixed(1)}%;background:${color};color:${txtColor};height:100%;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;position:relative;overflow:hidden;transition:width 0.8s ease,background 0.5s;`;
+  lbl.textContent = status;
+  daysEl.textContent = (days >= 999 ? '∞' : days.toFixed(1)) + ' days';
+  exLbl.textContent = days >= 999 ? 'Indefinite' : 'Day ~' + Math.round(days);
+  const col = days > 40 ? 'var(--cyan)' : days > 20 ? 'var(--orange)' : 'var(--red)';
+  daysEl.style.color = col;
+}
+
+// ═══════════════════════════════════════════════════════
+// FUEL PRICES
+// ═══════════════════════════════════════════════════════
+function updateFuel(sc) {
+  const p   = sc.price;
+  const col = sc.color;
+
+  document.getElementById('fp-pa').textContent = '₹' + p.petrol_inr_crisis.toFixed(2);
+  document.getElementById('fp-pa').style.color = col;
+  document.getElementById('fp-pb2').textContent = '+₹' + p.cost_increase_per_litre_inr.toFixed(2);
+  document.getElementById('fp-pb2').style.cssText = `background:${col}22;color:${col};margin-top:3px;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;display:inline-block;transition:all 0.4s;`;
+
+  const dDelta = (p.cost_increase_per_litre_inr * 0.9).toFixed(2);
+  document.getElementById('fd-pa').textContent = '₹' + p.diesel_inr_crisis.toFixed(2);
+  document.getElementById('fd-pa').style.color = col;
+  document.getElementById('fd-pb2').textContent = '+₹' + dDelta;
+  document.getElementById('fd-pb2').style.cssText = `background:${col}22;color:${col};margin-top:3px;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;display:inline-block;transition:all 0.4s;`;
+
+  // Freight bar
+  const freightPct = Math.min((p.freight_premium_per_bbl / 3.0) * 100, 100);
+  document.getElementById('freight-fill').style.width = freightPct + '%';
+  document.getElementById('freight-val').textContent = '+$' + p.freight_premium_per_bbl.toFixed(1) + '/bbl';
+}
+
+// ═══════════════════════════════════════════════════════
+// KPI CARDS
+// ═══════════════════════════════════════════════════════
+function updateKPIs(sc) {
+  const s = sc.supply, p = sc.price, m = sc.macro, col = sc.color;
+
+  document.getElementById('kv-gap').textContent   = s.net_supply_gap_mbd.toFixed(2);
+  document.getElementById('kv-gap').style.color   = col;
+  document.getElementById('kd-gap').textContent   = '↑ +' + s.disrupted_mbd.toFixed(2) + ' mb/d disrupted';
+
+  document.getElementById('kv-brent').textContent = '$' + p.brent_crisis_usd;
+  document.getElementById('kv-brent').style.color = col;
+  document.getElementById('kd-brent').textContent = '↑ +$' + p.brent_premium_usd + ' vs $82 baseline';
+
+  const sprDays = s.spr_buffer_days_at_gap;
+  const sprColor = sprDays < 15 ? 'var(--red)' : sprDays < 30 ? 'var(--orange)' : 'var(--cyan)';
+  document.getElementById('kv-spr').textContent = sprDays >= 999 ? '∞' : sprDays.toFixed(1);
+  document.getElementById('kv-spr').style.color = sprColor;
+  document.getElementById('kd-spr').textContent = sprDays < 15 ? '⚠ CRITICAL — near depletion' : sprDays < 30 ? '⚠ CAUTION' : '→ Adequate';
+  document.getElementById('kd-spr').className   = sprDays < 30 ? 'kpi-d d-up' : 'kpi-d d-ok';
+
+  document.getElementById('kv-gdp').textContent = m.gdp_impact_pct.toFixed(1) + '%';
+  document.getElementById('kv-gdp').style.color = col;
+  document.getElementById('kd-gdp').textContent = '↓ ' + m.cpi_inflation_bps + ' bps CPI rise';
+}
+
+// ═══════════════════════════════════════════════════════
+// STRAIT STATUS BADGE
+// ═══════════════════════════════════════════════════════
+const BADGE_STYLES = {
+  30:  { text: '30% CLOSURE', bg: 'rgba(216,167,60,0.12)', border: '#d8a73c', color: '#d8a73c' },
+  60:  { text: '60% CLOSURE — SEVERE', bg: 'rgba(237,125,58,0.14)', border: '#ed7d3a', color: '#ed7d3a' },
+  100: { text: 'FULL BLOCKADE', bg: 'rgba(239,83,80,0.16)', border: '#ef5350', color: '#ef5350' },
+};
+function updateBadge(pct) {
+  const s = BADGE_STYLES[pct];
+  const el = document.getElementById('strait-badge');
+  el.textContent = s.text;
+  el.style.cssText = `padding:4px 12px;border-radius:4px;font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;animation:pulse 2s ease-in-out infinite;background:${s.bg};border:1px solid ${s.border};color:${s.color};`;
+}
+
+// ═══════════════════════════════════════════════════════
+// SCENARIO COMPARISON MATRIX
+// ═══════════════════════════════════════════════════════
+const SC_COLORS = { 30: '#d8a73c', 60: '#ed7d3a', 100: '#ef5350' };
+const SC_TAGS   = { 30: 'Partial', 60: 'Severe', 100: 'Blockade' };
+
+function renderMatrix(data) {
+  const el = document.getElementById('sc-matrix');
+  el.innerHTML = [30, 60, 100].map(pct => {
+    const sc  = data.scenarios[pct];
+    const col = SC_COLORS[pct];
+    const act = pct === activePct ? 'active' : '';
+    return `
+    <div class="sc-card ${act}" style="${act ? `border-color:${col};box-shadow:0 0 14px ${col}22` : ''}">
+      <div class="sc-hd" style="background:${col}18;color:${col};">${pct}% ${SC_TAGS[pct]}</div>
+      <div class="sc-bd">
+        <div class="sc-row"><span class="sc-lbl">Supply Gap</span><span class="sc-val" style="color:${col}">${sc.supply.net_supply_gap_mbd.toFixed(2)} mb/d</span></div>
+        <div class="sc-row"><span class="sc-lbl">Brent</span><span class="sc-val" style="color:${col}">$${sc.price.brent_crisis_usd}</span></div>
+        <div class="sc-row"><span class="sc-lbl">Petrol</span><span class="sc-val" style="color:${col}">₹${sc.price.petrol_inr_crisis.toFixed(0)}/L</span></div>
+        <div class="sc-row"><span class="sc-lbl">SPR Days</span><span class="sc-val">${sc.supply.spr_buffer_days_at_gap.toFixed(1)}</span></div>
+        <div class="sc-row"><span class="sc-lbl">GDP Risk</span><span class="sc-val" style="color:var(--red)">-${sc.macro.gdp_impact_pct.toFixed(1)}%</span></div>
+        <div class="sc-score">
+          <div class="sc-score-n" style="color:${col}">${sc.resilience_score}</div>
+          <div class="sc-score-l">Resilience</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// CASCADE TIMELINE
+// ═══════════════════════════════════════════════════════
+const CASCADES = {
+  30: [
+    { lv:'lv-l', day:'Day 0',   desc:'Closure announced; shipping insurance premiums +200%', imp:'Market Alert' },
+    { lv:'lv-m', day:'Day 1–2', desc:'30% of Hormuz tankers divert; spot crude +$8/bbl', imp:'Freight Disruption' },
+    { lv:'lv-m', day:'Day 2–5', desc:'Cape rerouting adds $0.9/bbl freight premium; 18-22 day delay', imp:'Cost Escalation' },
+    { lv:'lv-h', day:'Day 5–14',desc:'Refinery crude intake -10%; diesel allocation tightened', imp:'Supply Tightening' },
+    { lv:'lv-h', day:'Day 14+', desc:'Petrol +₹14–37/litre expected; SPR partial draw authorized', imp:'Price Shock Begins' },
+  ],
+  60: [
+    { lv:'lv-c', day:'Day 0',   desc:'Emergency Petroleum Act invoked; Gulf tankers halting', imp:'CRISIS DECLARED' },
+    { lv:'lv-h', day:'Day 1',   desc:"Lloyds suspends Gulf coverage; freight market freezing", imp:'Insurance Collapse' },
+    { lv:'lv-c', day:'Day 2–3', desc:'1.86 mb/d crude halted; Brent at $104/bbl; refinery runs -25%', imp:'Severe Supply Shock' },
+    { lv:'lv-c', day:'Day 3–7', desc:'Diesel shortage in metros; trucking disruption; food chain stress', imp:'Supply Chain Failure' },
+    { lv:'lv-h', day:'Day 7–14',desc:'Petrol at ₹197/litre; panic buying; pump queues', imp:'Retail Crisis' },
+    { lv:'lv-h', day:'Day 14+', desc:'Industrial production -15%; GDP contraction risk 0.6%', imp:'Economic Slowdown' },
+  ],
+  100: [
+    { lv:'lv-c', day:'Day 0',   desc:'FULL BLOCKADE — all 3.1 mb/d Gulf crude halted; Brent $130', imp:'NATIONAL EMERGENCY' },
+    { lv:'lv-c', day:'Day 0–2', desc:'Tanker insurance voided; force majeure declared industry-wide', imp:'Market Freeze' },
+    { lv:'lv-c', day:'Day 2–7', desc:'Refinery input -65%; diesel and petrol critical shortage', imp:'FUEL CRISIS' },
+    { lv:'lv-c', day:'Day 7–9.5',desc:'SPR DEPLETION IMMINENT — all three sites at critical level', imp:'⚠ SPR EXHAUSTION' },
+    { lv:'lv-c', day:'Day 10',  desc:'FUEL-RED rationing enacted; transport priority only; public panic', imp:'RATIONING BEGINS' },
+    { lv:'lv-h', day:'Day 14+', desc:'Industrial shutdown; GDP contraction 1.0%; CPI +205bps', imp:'Economic Collapse Risk' },
+    { lv:'lv-h', day:'Day 21+', desc:'UN/IEA/G7 coordination; Cape routing partial relief (20-day lag)', imp:'International Response' },
+  ],
+};
+
+function renderCascade(pct) {
+  const el = document.getElementById('cascade');
+  el.innerHTML = CASCADES[pct].map(e => `
+    <div class="ce ${e.lv}">
+      <div class="ce-dot"></div>
+      <div class="ce-day">${e.day}</div>
+      <div class="ce-desc">${e.desc}</div>
+      <div class="ce-imp">${e.imp}</div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// AI RECOMMENDED ACTIONS
+// ═══════════════════════════════════════════════════════
+const ACTIONS = {
+  30: [
+    { p:'URGENT',  t:'<strong>Activate SPR draw</strong> at 0.2 mb/d — Padur & Mangalore facilities on standby' },
+    { p:'URGENT',  t:'<strong>Emergency procurement</strong> from Russia via existing MoU (+0.3 mb/d)' },
+    { p:'HIGH',    t:'<strong>Issue shipping advisory</strong> for Gulf-flag tankers; insurance surcharge alert' },
+    { p:'HIGH',    t:'<strong>Brief Cabinet Committee</strong> on Economic Security (CCES)' },
+    { p:'MONITOR', t:'<strong>Hedge 30-day forward</strong> crude futures position to contain cost exposure' },
+  ],
+  60: [
+    { p:'IMMEDIATE',t:'<strong>Full SPR draw authorization</strong> — all three ISPRL sites at maximum rate' },
+    { p:'IMMEDIATE',t:'<strong>Invoke Emergency Petroleum Act</strong> — all provisions now active' },
+    { p:'URGENT',  t:'<strong>Issue public fuel conservation</strong> advisory; prepare FUEL-AMBER rationing protocol' },
+    { p:'URGENT',  t:'<strong>Coordinate IEA coordinated stock release</strong> — 60-day reserve access agreement' },
+    { p:'HIGH',    t:'<strong>Activate bilateral energy MoUs</strong> with UAE (ADNOC bypass), US, Russia' },
+  ],
+  100: [
+    { p:'IMMEDIATE',t:'<strong>Declare National Energy Emergency</strong> — Cabinet authorization required NOW' },
+    { p:'IMMEDIATE',t:'<strong>Initiate FUEL-RED rationing protocol</strong> — transport sector priority allocation' },
+    { p:'IMMEDIATE',t:'<strong>Suspend non-essential industrial fuel use</strong> — executive order required' },
+    { p:'URGENT',  t:'<strong>Coordinate UN Security Council statement</strong> on Hormuz freedom of navigation' },
+    { p:'URGENT',  t:'<strong>Reroute 78 tankers</strong> via Cape of Good Hope — 20-day transit, +$3.0/bbl cost' },
+  ],
+};
+const PMAP = { 'IMMEDIATE':'ap-imm', 'URGENT':'ap-urg', 'HIGH':'ap-hi', 'MONITOR':'ap-mon' };
+
+function renderActions(pct) {
+  const acts = ACTIONS[pct];
+  document.getElementById('act-badge').textContent = acts.length + ' Actions';
+  document.getElementById('act-list').innerHTML = acts.map(a =>
+    `<li class="action-item"><span class="ap ${PMAP[a.p]}">${a.p}</span><span class="at">${a.t}</span></li>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// RADAR CHART
+// ═══════════════════════════════════════════════════════
+function radarData(data, pct) {
+  const sc = data.scenarios[pct];
+  const b  = data.preset.baseline;
+  return [
+    Math.round(sc.supply.effective_supply_mbd / b.total_crude_imports_mbd * 100),
+    Math.max(0, Math.round(100 - sc.price.brent_premium_usd / b.brent_baseline_usd * 100)),
+    Math.min(100, Math.round(sc.supply.spr_buffer_days_at_gap >= 999 ? 100 : sc.supply.spr_buffer_days_at_gap / 30 * 100)),
+    45,     // Route Flex (non-Hormuz flex capability, semi-fixed)
+    Math.round(100 - b.hormuz_dependency_pct),
+    Math.max(0, 100 - ESI_SCORES[pct]),
+  ];
+}
+const RADAR_LABELS = ['Supply\nSecurity', 'Price\nStability', 'SPR\nAdequacy', 'Route\nFlex', 'Import\nDiversif.', 'Fiscal\nBuffer'];
+
+function initRadar(data) {
+  const ctx = document.getElementById('radar').getContext('2d');
+  const current  = radarData(data, activePct);
+  const baseline = [100, 100, 32, 45, 35, 72]; // India baseline
+
+  radarChart = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: RADAR_LABELS,
+      datasets: [
+        {
+          label: 'Current Scenario',
+          data: current,
+          backgroundColor: 'rgba(216,167,60,0.16)',
+          borderColor: '#d8a73c',
+          borderWidth: 2,
+          pointBackgroundColor: '#d8a73c',
+          pointRadius: 3,
+        },
+        {
+          label: 'Baseline (Normal)',
+          data: baseline,
+          backgroundColor: 'rgba(122,193,255,0.08)',
+          borderColor: 'rgba(122,193,255,0.35)',
+          borderWidth: 1.5,
+          borderDash: [5, 4],
+          pointBackgroundColor: 'rgba(122,193,255,0.5)',
+          pointRadius: 2,
+        },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#7a9cbf', font: { size: 8 }, boxWidth: 10, padding: 8 }
+        },
+      },
+      scales: {
+        r: {
+          min: 0, max: 100,
+          ticks: { display: false, stepSize: 25 },
+          grid:  { color: 'rgba(122,193,255,0.1)' },
+          angleLines: { color: 'rgba(122,193,255,0.08)' },
+          pointLabels: { color: '#7a9cbf', font: { size: 8 } },
         }
+      },
+      animation: { duration: 600 },
+    }
+  });
+}
 
-        // ── Vessels ──
-        async function loadVessels() {
-            try {
-                const res = await fetch('/api/latest');
-                const data = await res.json();
+function updateRadar(data, pct) {
+  if (!radarChart) return;
+  radarChart.data.datasets[0].data = radarData(data, pct);
+  const col = SC_COLORS[pct];
+  radarChart.data.datasets[0].backgroundColor = col + '22';
+  radarChart.data.datasets[0].borderColor      = col;
+  radarChart.data.datasets[0].pointBackgroundColor = col;
+  radarChart.update('active');
+}
 
-                markers.clearLayers();
-                data.vessels.forEach(v => {
-                    const hasAnomaly = v.anomalies && v.anomalies.length > 0;
-                    const color = hasAnomaly ? '#ff5252' : getVesselColor(v);
-                    const marker = L.circleMarker([v.lat, v.lon], {
-                        radius: v.type && v.type.includes('Tanker') ? 6 : 5,
-                        fillColor: color, color: hasAnomaly ? '#ff5252' : '#fff',
-                        weight: hasAnomaly ? 2 : 1, fillOpacity: hasAnomaly ? 0.5 : 0.85,
-                        dashArray: hasAnomaly ? '3 3' : null,
-                    });
-                    const speedKn = v.speed != null && v.speed < 102.3 ? v.speed.toFixed(1) : '--';
-                    // Build anomaly warning HTML
-                    let anomalyHtml = '';
-                    if (v.anomalies && v.anomalies.length > 0) {
-                        const labels = {
-                            'speed_unavailable': 'Speed data unavailable (AIS 102.3 kn = protocol "not available")',
-                            'speed_suspicious': 'Suspicious speed (&gt;40 kn) — likely AIS receiver glitch',
-                            'position_jump': 'Large position jump detected — possible AIS spoofing or glitch',
-                        };
-                        const msgs = v.anomalies.map(a => labels[a] || a).join('<br>');
-                        anomalyHtml = `<div style="background:#4a1c1c;border:1px solid #ff5252;border-radius:4px;padding:4px 8px;margin:4px 0;font-size:11px;color:#ffcdd2;">&#9888; DATA QUALITY WARNING<br>${msgs}</div>`;
-                    }
-                    marker.bindPopup(`
-                        <div class="vessel-popup">
-                            <div class="name">${v.name}</div>
-                            <span class="type-badge ${getTypeClass(v.type)}">${v.type}</span><br>
-                            ${anomalyHtml}
-                            <strong>Speed:</strong> ${speedKn} kn &nbsp;
-                            <strong>Course:</strong> ${v.course ? v.course.toFixed(0) + '&deg;' : '--'}<br>
-                            <strong>Flag:</strong> ${v.flag || '--'} &nbsp;
-                            <strong>MMSI:</strong> ${v.mmsi}<br>
-                            <strong>Dest:</strong> ${v.destination || '--'}<br>
-                            <strong>Size:</strong> ${v.length ? v.length + 'm' : '--'} x ${v.width ? v.width + 'm' : '--'}<br>
-                            <button class="track-btn" onclick="showTrack(${v.mmsi})">Show Track (6h)</button>
-                        </div>
-                    `);
-                    markers.addLayer(marker);
-                });
+// ═══════════════════════════════════════════════════════
+// SANKEY DIAGRAM (Canvas)
+// ═══════════════════════════════════════════════════════
+const SUP_COLORS = ['#ed7d3a','#4fd299','#7ac1ff','#d8a73c','#8fbbff','#ef5350'];
+const SEC_COLORS = ['#ef5350','#4a8fe8','#4fd299','#f9b142'];
+const SECTORS = [
+  { name:'Transport', pct:0.40 },
+  { name:'Industry',  pct:0.35 },
+  { name:'Agriculture',pct:0.15 },
+  { name:'Power Gen', pct:0.10 },
+];
 
-                document.getElementById('vessel-count').textContent = 352;
+function drawSankey(data, pct) {
+  const canvas = document.getElementById('sankey');
+  const W = canvas.offsetWidth || 580;
+  canvas.width = W;
+  const H = 215;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
 
-                document.getElementById('total-records').textContent = "369";
-            } catch (e) {
-                console.error('Failed to load vessels:', e);
-            }
-        }
+  const suppliers = data.preset.baseline.top_suppliers;
+  const closureR  = pct / 100;
+  const maxMbd    = Math.max(...suppliers.map(s => s.mbd));
 
-        async function showTrack(mmsi) {
-            try {
-                trackLayer.clearLayers();
-                const res = await fetch(`/api/tracks/${mmsi}?hours=6`);
-                const data = await res.json();
-                if (data.points.length < 2) return;
-                const latlngs = data.points.map(p => [p.lat, p.lon]);
-                L.polyline(latlngs, { color: '#4fc3f7', weight: 2, opacity: 0.7, dashArray: '6 4' }).addTo(trackLayer);
-                L.circleMarker(latlngs[0], {
-                    radius: 4, fillColor: '#81c784', color: '#fff', weight: 1, fillOpacity: 0.9,
-                }).bindTooltip('Start').addTo(trackLayer);
-            } catch (e) { console.error('Track error:', e); }
-        }
+  const PAD = { t:12, b:12, l:8, r:8 };
+  const drawH = H - PAD.t - PAD.b;
+  const gap = 4;
+  const totalGaps = gap * (suppliers.length - 1);
+  const totalH = drawH - totalGaps;
 
-        // ── Blockade indicators ──
-        async function loadBlockade() {
-            try {
-                const res = await fetch('/api/analytics/blockade');
-                const data = await res.json();
+  // Left nodes: suppliers (x: PAD.l … PAD.l+8 = node bar)
+  const LX  = PAD.l + 68;    // right edge of supplier node
+  const RX  = W - PAD.r - 68; // left edge of sector node
+  const MX1 = LX + (RX - LX) * 0.42; // left edge of refinery
+  const MX2 = LX + (RX - LX) * 0.58; // right edge of refinery
+  const MXC = (MX1 + MX2) / 2;
 
-                document.getElementById('bi-strait').textContent = data.strait_transits_24h;
-                document.getElementById('bi-waiting').textContent = data.waiting_fleet_6h;
-                document.getElementById('bi-waiting24').textContent = data.waiting_fleet_24h;
-                document.getElementById('bi-active').textContent = data.active_vessels;
-                document.getElementById('anchored-pct').textContent = data.anchored_ratio_pct + '%';
-                document.getElementById('anchored-bar').style.width = Math.min(data.anchored_ratio_pct, 100) + '%';
+  // Build supplier nodes
+  const supNodes = [];
+  let curY = PAD.t;
+  suppliers.forEach((sup, i) => {
+    const h = Math.max(5, (sup.mbd / maxMbd) * (totalH * 0.85) + totalH * 0.025);
+    supNodes.push({ y: curY, h, mbd: sup.mbd, name: sup.name, col: SUP_COLORS[i], disrupted: sup.mbd * closureR });
+    curY += h + gap;
+  });
 
-                // Data-driven strait status badge
-                const badge = document.getElementById('strait-badge');
-                const status = data.strait_status;
-                if (status === 'NO_TRANSIT') {
-                    badge.textContent = 'NO TRANSIT';
-                    badge.className = 'strait-status strait-blocked';
-                } else if (status === 'LIMITED') {
-                    badge.textContent = data.strait_transits_24h + ' TRANSITS (LIMITED)';
-                    badge.className = 'strait-status';
-                    badge.style.cssText = 'background:#e65100;color:#ffe0b2;border:1px solid #ff9800;padding:4px 14px;border-radius:4px;font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;';
-                } else {
-                    badge.textContent = data.strait_transits_24h + ' TRANSITS';
-                    badge.className = 'strait-status';
-                    badge.style.cssText = 'background:#1b5e20;color:#a5d6a7;border:1px solid #4caf50;padding:4px 14px;border-radius:4px;font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;';
-                }
+  // Refinery node
+  const refY = PAD.t;
+  const refH = drawH;
+  const refW = MX2 - MX1;
 
-                // Data-driven situation report
-                const sit = data.situation;
-                if (sit) {
-                    const banner = document.getElementById('situation-banner');
-                    banner.style.display = 'block';
-                    banner.className = 'crisis-banner situation-' + sit.level;
-                    document.getElementById('situation-title').textContent = sit.title;
-                    document.getElementById('situation-text').textContent = sit.text;
-                }
+  // Sector nodes
+  const secNodes = [];
+  let secY = PAD.t;
+  SECTORS.forEach((sec, i) => {
+    const h = Math.max(5, sec.pct * drawH);
+    secNodes.push({ y: secY, h, name: sec.name, pct: sec.pct, col: SEC_COLORS[i] });
+    secY += h + gap;
+  });
 
-                // Waiting fleet by type
-                const ftl = document.getElementById('fleet-type-list');
-                const fleetTypes = data.fleet_by_type || [];
-                if (fleetTypes.length === 0) {
-                    ftl.innerHTML = '<li style="color:#555;font-size:11px">Calculating...</li>';
-                } else {
-                    const maxFt = fleetTypes[0].count;
-                    ftl.innerHTML = fleetTypes.map(f =>
-                        `<li class="rank-item">
-                            <span class="rank-name">${f.type}</span>
-                            <div class="rank-bar"><div class="rank-bar-fill" style="width:${(f.count/maxFt*100).toFixed(0)}%;background:#fdd835"></div></div>
-                            <span class="rank-val" style="color:#fdd835">${f.count}</span>
-                        </li>`
-                    ).join('');
-                }
-            } catch (e) { console.error('Blockade error:', e); }
-        }
+  ctx.lineJoin = 'round';
 
-        // ── Analytics ──
-        let transitChart = null;
+  // ── Draw supplier → refinery flows ──
+  supNodes.forEach((node, i) => {
+    const activeH    = node.h * (1 - (node.disrupted / node.mbd));
+    const disruptedH = node.h - activeH;
+    const refYStart  = refY + (i / suppliers.length) * refH;
 
-        function initTransitChart() {
-            const ctx = document.getElementById('transit-chart').getContext('2d');
-            transitChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: [],
-                    datasets: [
-                        { label: 'Inbound', data: [], backgroundColor: '#4caf50', borderRadius: 2 },
-                        { label: 'Outbound', data: [], backgroundColor: '#ff9800', borderRadius: 2 },
-                    ],
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'top', labels: { color: '#888', font: { size: 10 }, boxWidth: 12 } },
-                    },
-                    scales: {
-                        x: { stacked: true, ticks: { color: '#555', font: { size: 9 }, maxRotation: 45 }, grid: { color: 'rgba(255,255,255,0.03)' } },
-                        y: { stacked: true, beginAtZero: true, ticks: { color: '#555', font: { size: 10 }, stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                    },
-                },
-            });
-        }
+    // Active flow
+    if (activeH > 2) {
+      ctx.beginPath();
+      ctx.moveTo(LX - 4, node.y + disruptedH);
+      ctx.bezierCurveTo(
+        LX + (MX1 - LX) * 0.5, node.y + disruptedH,
+        LX + (MX1 - LX) * 0.5, refYStart + activeH * 0.5,
+        MX1, refYStart + activeH * 0.5
+      );
+      ctx.lineWidth = Math.max(1.5, activeH);
+      ctx.strokeStyle = node.col + 'bb';
+      ctx.stroke();
+    }
 
-        async function loadTransitData() {
-            try {
-                const tRes = await fetch('/api/analytics/transits?hours=24');
-                const tData = await tRes.json();
-                document.getElementById('transit-in').textContent = tData.inbound;
-                document.getElementById('transit-out').textContent = tData.outbound;
+    // Disrupted flow (dashed, red-tinted)
+    if (disruptedH > 2) {
+      ctx.save();
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(LX - 4, node.y);
+      ctx.bezierCurveTo(
+        LX + (MX1 - LX) * 0.5, node.y,
+        LX + (MX1 - LX) * 0.5, refYStart - 4,
+        MX1, refYStart - 4
+      );
+      ctx.lineWidth = Math.max(1, disruptedH);
+      ctx.strokeStyle = 'rgba(239,83,80,0.45)';
+      ctx.stroke();
+      ctx.restore();
+    }
 
-                // Recent events
-                const recentDiv = document.getElementById('recent-transits');
-                if (tData.recent_events.length === 0) {
-                    recentDiv.innerHTML = '<div style="color:#555;font-size:11px;padding:6px 0">No port crossings detected in this window.</div>';
-                } else {
-                    recentDiv.innerHTML = tData.recent_events.slice(0, 10).map(e => {
-                        const dirClass = e.direction === 'INBOUND' ? 'dir-in' : 'dir-out';
-                        const timeStr = e.crossed_at ? new Date(e.crossed_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '--';
-                        const name = e.ship_name || `MMSI:${e.mmsi}`;
-                        const gateName = (e.gate || '').replace('Dubai / Jebel Ali Approach','Dubai').replace('Fujairah Approach','Fujairah').replace('Strait of Hormuz','Strait');
-                        return `<div class="transit-event">
-                            <span class="dir ${dirClass}">${e.direction === 'INBOUND' ? 'IN' : 'OUT'}</span>
-                            <span class="vessel-name">${name}</span>
-                            <span style="color:#4fc3f7;font-size:9px;margin-left:3px">${gateName}</span>
-                            <span class="time" style="float:right">${timeStr}</span>
-                        </div>`;
-                    }).join('');
-                }
+    // Supplier node (left bar)
+    ctx.fillStyle = node.col;
+    ctx.fillRect(LX - 8, node.y, 7, node.h);
 
-                // Hourly chart
-                const hRes = await fetch('/api/analytics/hourly?hours=48');
-                const hData = await hRes.json();
-                if (transitChart && hData.data.length > 0) {
-                    transitChart.data.labels = hData.data.map(d => {
-                        const dt = new Date(d.hour);
-                        return dt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                    });
-                    transitChart.data.datasets[0].data = hData.data.map(d => d.inbound);
-                    transitChart.data.datasets[1].data = hData.data.map(d => d.outbound);
-                    transitChart.update();
-                }
-            } catch (e) { console.error('Transit error:', e); }
-        }
+    // Labels
+    ctx.font = 'bold 9px Inter, sans-serif';
+    ctx.fillStyle = '#aaa';
+    ctx.textAlign = 'right';
+    ctx.fillText(node.name, LX - 12, node.y + node.h * 0.5 - 3);
+    ctx.font = '8px JetBrains Mono, monospace';
+    ctx.fillStyle = node.col;
+    ctx.fillText(node.mbd.toFixed(2) + ' mb/d', LX - 12, node.y + node.h * 0.5 + 7);
+    // Disruption tag
+    if (disruptedH > 3) {
+      ctx.font = 'bold 7px Inter';
+      ctx.fillStyle = 'rgba(239,83,80,0.7)';
+      ctx.fillText('−' + (node.disrupted).toFixed(2), LX - 12, node.y + node.h * 0.5 + 16);
+    }
+  });
 
-        async function loadVesselStates() {
-            try {
-                const res = await fetch('/api/analytics/states');
-                const data = await res.json();
-                const s = data.states || {};
-                document.getElementById('st-transiting').textContent = s.transiting || 0;
-                document.getElementById('st-anchored').textContent = s.anchored || 0;
-                document.getElementById('st-maneuvering').textContent = s.maneuvering || 0;
-                document.getElementById('st-slow').textContent = s.slow || 0;
+  // ── Draw India Refinery node ──
+  const refGrad = ctx.createLinearGradient(MX1, 0, MX2, 0);
+  refGrad.addColorStop(0, 'rgba(30,136,229,0.7)');
+  refGrad.addColorStop(1, 'rgba(122,193,255,0.7)');
+  ctx.fillStyle = refGrad;
+  ctx.fillRect(MX1, refY, refW, refH);
 
-                const zl = document.getElementById('zone-list');
-                const zones = data.zone_counts || {};
-                if (Object.keys(zones).length === 0) {
-                    zl.innerHTML = '<li style="color:#555;font-size:11px">No vessels in defined zones</li>';
-                } else {
-                    zl.innerHTML = Object.entries(zones).map(([name, cnt]) =>
-                        `<li class="zone-item"><span class="zone-name">${name}</span><span class="zone-count">${cnt} vessels</span></li>`
-                    ).join('');
-                }
-            } catch (e) { console.error('States error:', e); }
-        }
+  ctx.font = 'bold 8.5px Inter, sans-serif';
+  ctx.fillStyle = '#e0f7fa';
+  ctx.textAlign = 'center';
+  ctx.fillText('🇮🇳', MXC, refY + refH * 0.5 - 14);
+  ctx.fillText('INDIA', MXC, refY + refH * 0.5 - 2);
+  ctx.fillText('REFINERY', MXC, refY + refH * 0.5 + 8);
+  ctx.font = '7.5px JetBrains Mono, monospace';
+  ctx.fillStyle = 'rgba(122,193,255,0.8)';
+  ctx.fillText('5.0 mb/d', MXC, refY + refH * 0.5 + 18);
 
-        async function loadFlagData() {
-            try {
-                const res = await fetch('/api/analytics/flags?hours=24');
-                const data = await res.json();
-                const list = document.getElementById('flag-list');
-                const items = data.data || [];
-                if (items.length === 0) { list.innerHTML = '<li style="color:#555;font-size:11px">No data</li>'; return; }
-                const maxVal = items[0].vessels;
-                list.innerHTML = items.slice(0, 10).map(f =>
-                    `<li class="rank-item"><span class="rank-name">${f.flag}</span>
-                    <div class="rank-bar"><div class="rank-bar-fill" style="width:${(f.vessels/maxVal*100).toFixed(0)}%"></div></div>
-                    <span class="rank-val">${f.vessels}</span></li>`
-                ).join('');
-            } catch (e) { console.error('Flag error:', e); }
-        }
+  // ── Draw refinery → sector flows ──
+  secNodes.forEach((sec, i) => {
+    const refOutY = refY + (i / SECTORS.length) * refH + (refH / SECTORS.length) / 2;
+    const secMidY = sec.y + sec.h * 0.5;
 
-        async function loadDestData() {
-            try {
-                const res = await fetch('/api/analytics/destinations?hours=24');
-                const data = await res.json();
-                const list = document.getElementById('dest-list');
-                const items = data.data || [];
-                if (items.length === 0) { list.innerHTML = '<li style="color:#555;font-size:11px">No data</li>'; return; }
-                const maxVal = items[0].vessels;
-                list.innerHTML = items.slice(0, 10).map(d =>
-                    `<li class="rank-item"><span class="rank-name">${d.destination}</span>
-                    <div class="rank-bar"><div class="rank-bar-fill" style="width:${(d.vessels/maxVal*100).toFixed(0)}%"></div></div>
-                    <span class="rank-val">${d.vessels}</span></li>`
-                ).join('');
-            } catch (e) { console.error('Dest error:', e); }
-        }
+    // Reduce flow by scenario gap
+    const effectivePct = 1 - (closureR * 0.4);
+    const flowW = Math.max(1.5, sec.h * effectivePct);
 
-        // ── Controls ──
-        document.getElementById('sidebar-toggle').addEventListener('click', () => {
-            document.getElementById('sidebar').classList.toggle('collapsed');
-        });
-        document.getElementById('color-mode-btn').addEventListener('click', () => {
-            colorMode = colorMode === 'type' ? 'state' : 'type';
-            const btn = document.getElementById('color-mode-btn');
-            btn.textContent = colorMode === 'type' ? 'Color: Type' : 'Color: State';
-            btn.classList.toggle('active', colorMode === 'state');
-            loadVessels();
-        });
+    ctx.beginPath();
+    ctx.moveTo(MX2, refOutY);
+    ctx.bezierCurveTo(
+      MX2 + (RX - MX2) * 0.5, refOutY,
+      MX2 + (RX - MX2) * 0.5, secMidY,
+      RX + 4, secMidY
+    );
+    ctx.lineWidth = flowW;
+    ctx.strokeStyle = sec.col + 'aa';
+    ctx.stroke();
 
-        // ── Main load ──
-        async function loadAll() {
-            await Promise.all([
-                loadVessels(),
-                loadBlockade(),
-                loadTransitData(),
-                loadVesselStates(),
-                loadFlagData(),
-                loadDestData(),
-            ]);
-        }
+    // Sector node (right bar)
+    ctx.fillStyle = sec.col;
+    ctx.fillRect(RX + 2, sec.y, 7, sec.h);
 
-        initTransitChart();
-        loadOverlays();
-        loadAll();
-        setInterval(loadAll, 30000);
-    </script>
+    // Labels
+    ctx.font = 'bold 9px Inter, sans-serif';
+    ctx.fillStyle = '#aaa';
+    ctx.textAlign = 'left';
+    ctx.fillText(sec.name, RX + 14, sec.y + sec.h * 0.5 - 3);
+    ctx.font = '8px Inter';
+    ctx.fillStyle = sec.col;
+    ctx.fillText((sec.pct * 100).toFixed(0) + '% demand', RX + 14, sec.y + sec.h * 0.5 + 7);
+  });
+
+  // Legend
+  ctx.font = '8px Inter, sans-serif';
+  ctx.fillStyle = 'rgba(122,193,255,0.6)';
+  ctx.textAlign = 'left';
+  ctx.fillText('— Active flow   - - - Disrupted', PAD.l, H - 3);
+}
+
+// ═══════════════════════════════════════════════════════
+// LEAFLET MAP
+// ═══════════════════════════════════════════════════════
+function initMap() {
+  map = L.map('map', {
+    center: [22, 62], zoom: 4,
+    zoomControl: false, scrollWheelZoom: false,
+    attributionControl: false,
+  });
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 18,
+  }).addTo(map);
+
+  L.control.attribution({ prefix: false, position:'bottomright' })
+    .addAttribution('© OpenStreetMap © CARTO').addTo(map);
+
+  // ── Hormuz strait danger polygon ──
+  L.polygon([
+    [26.85,55.80],[26.85,56.80],[26.55,57.10],[26.00,56.80],[26.00,55.90]
+  ], {
+    color:'#ff3d3d', weight:2, dashArray:'6 4',
+    fillColor:'#ef5350', fillOpacity:0.14, interactive:false,
+  }).addTo(map);
+
+  // Hormuz label marker
+  L.marker([26.45, 56.35], { icon: L.divIcon({
+    html:`<div style="color:var(--red);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;white-space:nowrap;text-shadow:0 0 8px rgba(239,83,80,0.8);background:rgba(6,11,21,0.72);padding:2px 7px;border-radius:3px;border:1px solid rgba(239,83,80,0.4)">⚠ STRAIT OF HORMUZ</div>`,
+    className:'', iconSize:[140,18], iconAnchor:[70,9],
+  }), interactive:false }).addTo(map);
+
+  // ── India coastal exclusion zone ──
+  L.polygon([
+    [23.0,68.0],[23.0,73.5],[15.0,73.5],[8.0,76.5],[8.0,80.5],[10.0,80.5],[22.0,88.0],[23.5,88.0],[23.5,68.0]
+  ], {
+    color:'#ed7d3a', weight:1, dashArray:'4 6',
+    fillColor:'#ed7d3a', fillOpacity:0.06, interactive:false,
+  }).addTo(map);
+
+  // ── Primary tanker route: Gulf → India ──
+  L.polyline([
+    [26.3,56.6],[24.5,59.0],[22.0,63.0],[19.5,67.5],[18.96,72.82]
+  ], {
+    color:'#d8a73c', weight:2.5, dashArray:'10 6', opacity:0.85
+  }).addTo(map);
+
+  // ── Alternate route via Cape (faint) ──
+  L.polyline([
+    [26.3,56.6],[24.0,54.0],[15.0,42.0],[0,40.0],[-20,35.0],[-34,18.0],[-34,26.0],[-20,44.0],[0,53.0],[12,44.0],[18.96,72.82]
+  ], {
+    color:'rgba(122,193,255,0.8)', weight:1.5, dashArray:'6 8', opacity:0.32
+  }).addTo(map);
+
+  // Cape label
+  L.marker([-20, 38], { icon: L.divIcon({
+    html:`<div style="color:rgba(122,193,255,0.82);font-size:8px;font-weight:600;white-space:nowrap;background:rgba(6,11,21,0.6);padding:1px 5px;border-radius:3px;">Cape Alternate (+22 days)</div>`,
+    className:'',iconSize:[130,14],iconAnchor:[65,7],
+  }), interactive:false }).addTo(map);
+
+  // ── Gulf supplier ports ──
+  const suppliers = [
+    { lat:29.5,  lon:48.0,  label:'Basra (Iraq)',        col:'#ed7d3a', icon:'🛢️' },
+    { lat:26.9,  lon:50.2,  label:"Ras Tanura (Saudi)", col:'#4fd299', icon:'🛢️' },
+    { lat:24.5,  lon:54.4,  label:'Ruwais (UAE)',        col:'#7ac1ff', icon:'🛢️' },
+    { lat:29.0,  lon:48.1,  label:'Mina Al Ahmadi (KW)',col:'#d8a73c', icon:'🛢️' },
+    { lat:22.4,  lon:59.5,  label:'Mina Al Fahal (OM)', col:'#8fbbff', icon:'🛢️' },
+    { lat:25.5,  lon:51.5,  label:'Ras Laffan (QA)',    col:'#ef5350', icon:'⛽' },
+  ];
+  suppliers.forEach(s => {
+    L.circleMarker([s.lat, s.lon], {
+      radius:6, fillColor:s.col, color:'rgba(255,255,255,0.6)',
+      weight:1.5, fillOpacity:0.9,
+    }).bindTooltip(`<strong>${s.label}</strong>`, { direction:'top', offset:[0,-4] })
+      .addTo(map);
+  });
+
+  // ── India destination ports ──
+  const indiaPorts = [
+    { lat:18.96, lon:72.82, label:'Mumbai (BPCL/HPCL)', col:'#d8a73c' },
+    { lat:17.6,  lon:83.2,  label:'Visakhapatnam SPR',  col:'#d8a73c' },
+    { lat:12.9,  lon:74.8,  label:'Mangalore SPR',      col:'#4fd299' },
+    { lat:11.9,  lon:79.8,  label:'Chennai / IOCL',     col:'#d8a73c' },
+    { lat:22.6,  lon:72.4,  label:'Kandla',             col:'#d8a73c' },
+  ];
+  indiaPorts.forEach(p => {
+    L.circleMarker([p.lat, p.lon], {
+      radius:5, fillColor:p.col, color:'rgba(255,255,255,0.5)',
+      weight:1.5, fillOpacity:0.85,
+    }).bindTooltip(`<strong>${p.label}</strong>`, { direction:'top', offset:[0,-4] })
+      .addTo(map);
+  });
+
+  // ── Animated tanker vessels (random scatter on route) ──
+  const tankersOnRoute = [
+    [26.0,57.5],[24.8,59.8],[23.5,62.0],[22.2,64.2],[21.0,66.5],
+    [20.0,68.5],[19.2,71.0],[25.5,58.0],[24.0,61.5],[22.8,65.0],
+    [21.5,67.5],[20.5,69.5],[19.5,72.0],
+  ];
+  const tankerEmojis = ['🛢️','🚢','⛴️','🚢'];
+  tankersOnRoute.forEach(([lat, lon]) => {
+    const em = tankerEmojis[Math.floor(Math.random() * tankerEmojis.length)];
+    L.marker([lat, lon], { icon: L.divIcon({
+      html:`<div style="font-size:13px;text-shadow:0 0 5px rgba(0,0,0,0.9);animation:none">${em}</div>`,
+      className:'', iconSize:[13,13], iconAnchor:[6,6],
+    }), interactive:false }).addTo(map);
+  });
+
+  // Slow-pan animation (subtle drift)
+  let panAngle = 0;
+  setInterval(() => {
+    panAngle += 0.3;
+    // Very subtle parallax feel — don't actually move the map,
+    // just re-invalidate size so tiles load properly
+    map.invalidateSize();
+  }, 15000);
+
+  L.control.zoom({ position:'bottomright' }).addTo(map);
+}
+
+
+// ═══════════════════════════════════════════════════════
+// INTEL TICKER
+// ═══════════════════════════════════════════════════════
+const TICKER_ITEMS = [
+  { tag:'MARITIME', txt:'Strait of Hormuz throughput at reduced operational capacity — vessel count tracking active' },
+  { tag:'CRUDE',    txt:'Brent crude futures elevated on Middle East risk premium — PPAC monitoring' },
+  { tag:'SPR',      txt:'Indian Strategic Petroleum Reserves (ISPRL) at readiness — Padur · Vizag · Mangalore' },
+  { tag:'IEA',      txt:'International Energy Agency coordinating potential member-state stock release protocol' },
+  { tag:'INDIA',    txt:"India's refining capacity: 5.0 mb/d — Indian Oil, HPCL, BPCL, RIL refineries on alert" },
+  { tag:'MACRO',    txt:'Ministry of Finance tracking crude price pass-through impact on fiscal deficit' },
+  { tag:'ROUTE',    txt:'Cape of Good Hope alternate routing operational — adds 18-22 days transit time' },
+  { tag:'PPAC',     txt:'Petroleum Planning & Analysis Cell daily briefing: Gulf import dependency data updated' },
+  { tag:'MARITIME', txt:'Strait of Hormuz throughput at reduced operational capacity — vessel count tracking active' },
+  { tag:'CRUDE',    txt:'Brent crude futures elevated on Middle East risk premium — PPAC monitoring' },
+  { tag:'SPR',      txt:'Indian Strategic Petroleum Reserves (ISPRL) at readiness — Padur · Vizag · Mangalore' },
+  { tag:'IEA',      txt:'International Energy Agency coordinating potential member-state stock release protocol' },
+  { tag:'INDIA',    txt:"India's refining capacity: 5.0 mb/d — Indian Oil, HPCL, BPCL, RIL refineries on alert" },
+  { tag:'MACRO',    txt:'Ministry of Finance tracking crude price pass-through impact on fiscal deficit' },
+];
+function buildTicker() {
+  const el = document.getElementById('ticker-inner');
+  el.innerHTML = TICKER_ITEMS.map(t =>
+    `<span class="t-item"><span class="t-tag">[${t.tag}]</span><span class="t-sep">▸</span>${t.txt}</span>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// MASTER RENDER
+// ═══════════════════════════════════════════════════════
+function updateMapOverlay(pct, sc) {
+  const col = SC_COLORS[pct];
+  const esi = ESI_SCORES[pct];
+
+  // Supply gap on map
+  document.getElementById('ms-gap').textContent = sc.supply.net_supply_gap_mbd.toFixed(2);
+  document.getElementById('ms-gap').style.color = col;
+  document.getElementById('ms-brent').textContent = `Brent +$${sc.price.brent_premium_usd} → $${sc.price.brent_crisis_usd}/bbl`;
+
+  // SPR on map
+  const sprDays = sc.supply.spr_buffer_days_at_gap;
+  const sprEl = document.getElementById('ms-spr');
+  sprEl.textContent = sprDays >= 999 ? '∞' : sprDays.toFixed(1);
+  sprEl.style.color = sprDays < 15 ? 'var(--red)' : sprDays < 30 ? 'var(--orange)' : 'var(--cyan)';
+
+  // Petrol on map
+  document.getElementById('ms-petrol').textContent = '₹' + sc.price.petrol_inr_crisis.toFixed(2);
+  document.getElementById('ms-petrol').style.color = col;
+  document.getElementById('ms-petrol-delta').textContent = `+₹${sc.price.cost_increase_per_litre_inr.toFixed(2)} vs ₹94.72 baseline`;
+
+  // ESI badge on map
+  const tier = esiTier(esi);
+  document.getElementById('ms-esi-badge').textContent = `📊 ESI: ${esi} / 100 · ${tier.label}`;
+  document.getElementById('ms-esi-badge').style.color = tier.color;
+  document.getElementById('ms-esi-badge').style.borderColor = tier.color + '55';
+
+  // Center closure badge
+  const tags = { 30:'30% CLOSURE · PARTIAL DISRUPTION', 60:'60% CLOSURE · SEVERE CRISIS', 100:'100% BLOCKADE · FULL CLOSURE' };
+  const closureEl = document.getElementById('ms-closure');
+  closureEl.textContent = tags[pct];
+  closureEl.style.color = col;
+
+  // Map strip border color
+  const strip = document.getElementById('map-strip');
+  strip.style.borderBottomColor = col + '55';
+}
+
+function renderAll(pct) {
+  if (!indiaData) return;
+  activePct = pct;
+  const sc = indiaData.scenarios[pct];
+
+  // Update header
+  updateBadge(pct);
+  ['sb30','sb60','sb100'].forEach(id => {
+    const b = document.getElementById(id);
+    const bp = parseInt(b.dataset.pct);
+    b.className = 'scen-btn' + (bp === pct ? ` a${pct}` : '');
+  });
+
+  // Map overlay
+  updateMapOverlay(pct, sc);
+
+  // Left column
+  typeWriter(document.getElementById('ai-text'), AI_BRIEFS[pct], pct === 100 ? 18 : 22);
+  updateRadar(indiaData, pct);
+  renderActions(pct);
+
+  // Center
+  updateESI(ESI_SCORES[pct]);
+  updateKPIs(sc);
+  renderMatrix(indiaData);
+  renderCascade(pct);
+  drawSankey(indiaData, pct);
+
+  // Right
+  updateMacro(sc.macro.gdp_impact_pct, sc.macro.cpi_inflation_bps);
+  updateSPR(sc.supply.spr_buffer_days_at_gap >= 999 ? 999 : sc.supply.spr_buffer_days_at_gap);
+  updateFuel(sc);
+}
+
+
+// ═══════════════════════════════════════════════════════
+// EMERGENCY MODE
+// ═══════════════════════════════════════════════════════
+document.getElementById('emer-tog').addEventListener('click', () => {
+  isEmergency = !isEmergency;
+  const tog = document.getElementById('emer-tog');
+  tog.classList.toggle('on', isEmergency);
+  document.body.classList.toggle('emer', isEmergency);
+  if (isEmergency) renderAll(100);
+});
+
+// ═══════════════════════════════════════════════════════
+// SCENARIO BUTTONS
+// ═══════════════════════════════════════════════════════
+['sb30','sb60','sb100'].forEach(id => {
+  document.getElementById(id).addEventListener('click', () => {
+    const pct = parseInt(document.getElementById(id).dataset.pct);
+    renderAll(pct);
+  });
+});
+
+document.getElementById('expand-map-btn').addEventListener('click', () => {
+  const strip = document.getElementById('map-strip');
+  const btn = document.getElementById('expand-map-btn');
+  const expanded = strip.classList.toggle('expanded');
+  btn.textContent = expanded ? '⤢ Collapse' : '⤢ Expand';
+  btn.title = expanded ? 'Collapse map' : 'Expand map';
+  setTimeout(() => {
+    if (map) map.invalidateSize();
+  }, 340);
+});
+
+// ═══════════════════════════════════════════════════════
+// CANVAS RESIZE HANDLER
+// ═══════════════════════════════════════════════
+window.addEventListener('resize', () => {
+  if (indiaData) drawSankey(indiaData, activePct);
+});
+
+// ═══════════════════════════════════════════════════════
+// DATA FETCH & INIT
+// ═══════════════════════════════════════════════════════
+async function loadData() {
+  try {
+    const res = await fetch('/api/india-hormuz');
+    const raw = await res.json();
+
+    // Convert string keys to int keys
+    indiaData = { ...raw, scenarios: {} };
+    for (const [k, v] of Object.entries(raw.scenarios)) {
+      indiaData.scenarios[parseInt(k)] = v;
+    }
+
+    initRadar(indiaData);
+    renderAll(30);
+  } catch(e) {
+    console.error('Failed to load India Hormuz data:', e);
+    document.getElementById('ai-text').textContent = 'Data connection error — backend offline. Ensure the FastAPI server is running.';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// STARTUP
+// ═══════════════════════════════════════════════════════
+initMap();
+buildTicker();
+loadData();
+</script>
 </body>
 </html>

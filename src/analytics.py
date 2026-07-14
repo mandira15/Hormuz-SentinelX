@@ -476,3 +476,199 @@ def set_demo_scenario(name: str):
 
     if name in SCENARIOS:
         CURRENT_SCENARIO = name
+
+
+# ==========================================================
+# INDIA — HORMUZ DEPENDENCY PRESET
+# Sources: IEA India 2023, Ministry of Petroleum & Natural Gas,
+#          PPAC, Petroleum Planning & Analysis Cell
+# ==========================================================
+
+INDIA_HORMUZ_PRESET = {
+    "title": "India Crude Oil Imports via Strait of Hormuz",
+    "subtitle": "What a Hormuz Crisis Means for India's Fuel Prices",
+    "baseline": {
+        # India total crude oil imports: ~4.8 mb/d (IEA 2023)
+        "total_crude_imports_mbd": 4.8,
+        # Share transiting Hormuz: ~64% of India's crude comes from Gulf producers
+        # (Iraq, Saudi Arabia, UAE, Kuwait, Iran proxy) that must use Hormuz
+        "hormuz_dependent_mbd": 3.1,
+        "hormuz_dependency_pct": 64.5,
+        # Strategic Petroleum Reserve capacity: ~5.33 million tonnes (~39 mb)
+        "spr_days_cover": 9.5,
+        # India's domestic crude production: ~0.75 mb/d
+        "domestic_production_mbd": 0.75,
+        # Non-Hormuz alternate supply available (Russia, Nigeria, US, Angola etc.)
+        "non_hormuz_flex_mbd": 1.4,
+        # India's refining capacity: 5.0 mb/d
+        "refining_capacity_mbd": 5.0,
+        # Brent reference price baseline (USD/barrel)
+        "brent_baseline_usd": 82,
+        # Petrol retail price baseline in India (₹/litre)
+        "petrol_baseline_inr": 94.72,
+        # Diesel retail price baseline (₹/litre)
+        "diesel_baseline_inr": 87.62,
+        # Top Gulf suppliers through Hormuz
+        "top_suppliers": [
+            {"country": "Iraq",         "mbd": 1.04, "pct": 21.7},
+            {"country": "Saudi Arabia", "mbd": 0.68, "pct": 14.2},
+            {"country": "UAE",          "mbd": 0.49, "pct": 10.2},
+            {"country": "Kuwait",       "mbd": 0.35, "pct":  7.3},
+            {"country": "Oman",         "mbd": 0.28, "pct":  5.8},
+            {"country": "Qatar (LNG)",  "mbd": 0.26, "pct":  5.4},
+        ],
+    },
+}
+
+# Closure scenario definitions (30 / 60 / 100 %)
+INDIA_CLOSURE_SCENARIOS = {
+    30: {
+        "label": "30% Closure",
+        "tag": "Partial Disruption",
+        "color": "#fdd835",
+        "description": (
+            "Conflict threatens navigation; 30% of Hormuz-dependent tankers rerouted "
+            "or delayed. Insurance surcharges spike. India activates partial SPR release."
+        ),
+    },
+    60: {
+        "label": "60% Closure",
+        "tag": "Severe Crisis",
+        "color": "#ff9800",
+        "description": (
+            "Active hostilities; Iranian mine threats. Most Gulf tankers halt. India invokes "
+            "Emergency Petroleum Act. Alternative routing via Cape of Good Hope adds 20 days. "
+            "Panic buying begins at pumps."
+        ),
+    },
+    100: {
+        "label": "100% Closure",
+        "tag": "Full Blockade",
+        "color": "#ff5252",
+        "description": (
+            "Complete chokepoint closure. All 3.1 mb/d of India's Hormuz-linked crude "
+            "stops flowing. SPR exhausted in ~9 days. Fuel rationing introduced. "
+            "Industrial output falls sharply."
+        ),
+    },
+}
+
+
+def compute_india_hormuz_impact(closure_pct: int) -> dict:
+    """
+    Compute India's supply gap, resilience score, and fuel price impact
+    for a given Hormuz closure percentage (30, 60, or 100).
+
+    Real-world assumptions:
+    - Rerouting via Cape Good Hope adds ~20 days and ~$3/bbl freight premium per 10% closure
+    - Brent premium scales roughly +$8/bbl per 30% closure tier
+    - India petrol/diesel price: 35-40% crude cost pass-through after taxes/duties buffer
+    - Alternative diversification from Russia/US/Nigeria can offset ~45% of lost Gulf supply
+    - SPR cover: 9.5 days at full demand
+    """
+    base = INDIA_HORMUZ_PRESET["baseline"]
+    hormuz_dep = base["hormuz_dependent_mbd"]
+    domestic = base["domestic_production_mbd"]
+    flex = base["non_hormuz_flex_mbd"]
+    spr_days = base["spr_days_cover"]
+    brent_base = base["brent_baseline_usd"]
+    petrol_base = base["petrol_baseline_inr"]
+    diesel_base = base["diesel_baseline_inr"]
+
+    # Volume disrupted
+    disrupted_mbd = round(hormuz_dep * closure_pct / 100, 2)
+
+    # India can flex ~45% of disruption from non-Hormuz sources
+    flex_offset = min(flex, disrupted_mbd * 0.45)
+    net_supply_gap_mbd = round(max(0, disrupted_mbd - flex_offset), 2)
+
+    # Effective supply (domestic + non-Gulf imports + flex)
+    effective_supply = round(domestic + (hormuz_dep - disrupted_mbd) + flex_offset, 2)
+
+    # SPR additional buffer in days at net gap rate
+    spr_buffer_days = round(spr_days * (hormuz_dep / (net_supply_gap_mbd + 0.01)), 1) \
+        if net_supply_gap_mbd > 0 else 999
+
+    # Brent price spike ($8 per 30% closure tier, exponential above 60%)
+    brent_premium = {30: 8, 60: 22, 100: 48}.get(closure_pct, closure_pct * 0.48)
+    brent_crisis = brent_base + brent_premium
+
+    # India pass-through: ~35% cost pass-through after excise buffer
+    usd_inr = 83.5
+    bbl_to_litre = 6.29   # 1 barrel ≈ 158.99 litres, but accounting for refinery yield
+    cost_increase_per_litre = round(
+        (brent_premium / bbl_to_litre) * usd_inr * 0.35, 2
+    )
+    petrol_crisis = round(petrol_base + cost_increase_per_litre, 2)
+    diesel_crisis = round(diesel_base + cost_increase_per_litre * 0.9, 2)
+
+    # Freight surcharge (Cape rerouting)
+    freight_premium_per_bbl = round(closure_pct / 10 * 0.3, 1)
+
+    # Resilience score (0–100): starts at 72 (India's baseline — diversified but Gulf-heavy)
+    # Deductions: supply gap severity, SPR cover, price shock magnitude
+    resilience = 72
+    resilience -= min(35, net_supply_gap_mbd * 15)   # supply gap penalty
+    resilience -= min(15, brent_premium * 0.3)         # price shock penalty
+    resilience += min(10, spr_buffer_days * 0.4)       # SPR bonus (capped)
+    resilience = max(0, min(100, round(resilience)))
+
+    # Macro impact
+    gdp_impact_pct = round(net_supply_gap_mbd * 0.6, 1)  # ~0.6% GDP per mb/d gap
+    inflation_bps = int(net_supply_gap_mbd * 120)         # ~120 bps CPI per mb/d gap
+
+    scenario_meta = INDIA_CLOSURE_SCENARIOS.get(closure_pct, {})
+
+    return {
+        "closure_pct": closure_pct,
+        "label": scenario_meta.get("label", f"{closure_pct}% Closure"),
+        "tag": scenario_meta.get("tag", "Disruption"),
+        "color": scenario_meta.get("color", "#ff9800"),
+        "description": scenario_meta.get("description", ""),
+        "supply": {
+            "hormuz_dependent_mbd": hormuz_dep,
+            "disrupted_mbd": disrupted_mbd,
+            "flex_offset_mbd": round(flex_offset, 2),
+            "net_supply_gap_mbd": net_supply_gap_mbd,
+            "effective_supply_mbd": effective_supply,
+            "spr_cover_days": spr_days,
+            "spr_buffer_days_at_gap": min(999, spr_buffer_days),
+        },
+        "price": {
+            "brent_baseline_usd": brent_base,
+            "brent_crisis_usd": brent_crisis,
+            "brent_premium_usd": brent_premium,
+            "freight_premium_per_bbl": freight_premium_per_bbl,
+            "petrol_inr_baseline": petrol_base,
+            "petrol_inr_crisis": petrol_crisis,
+            "diesel_inr_baseline": diesel_base,
+            "diesel_inr_crisis": diesel_crisis,
+            "cost_increase_per_litre_inr": cost_increase_per_litre,
+        },
+        "macro": {
+            "gdp_impact_pct": gdp_impact_pct,
+            "cpi_inflation_bps": inflation_bps,
+        },
+        "resilience_score": resilience,
+    }
+
+
+def get_india_hormuz_all_scenarios() -> dict:
+    """Return India resilience data for all three closure scenarios."""
+    return {
+        "preset": INDIA_HORMUZ_PRESET,
+        "scenarios": {
+            pct: compute_india_hormuz_impact(pct)
+            for pct in [30, 60, 100]
+        },
+        "metadata": {
+            "last_updated": "2024-Q4",
+            "sources": [
+                "IEA India Energy Review 2023",
+                "Ministry of Petroleum & Natural Gas, India",
+                "PPAC (Petroleum Planning & Analysis Cell)",
+                "Indian Strategic Petroleum Reserves Ltd (ISPRL)",
+                "IMF World Economic Outlook 2024",
+            ],
+        },
+    }

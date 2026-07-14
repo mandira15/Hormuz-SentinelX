@@ -16,6 +16,7 @@ from src.analytics import (
     ANCHORAGE_ZONES,
     STRAIT_DANGER_ZONE,
     CRISIS_TIMELINE,
+    INDIA_HORMUZ_PRESET,
     available_scenarios,
     get_current_scenario,
     set_demo_scenario,
@@ -26,7 +27,10 @@ from src.analytics import (
     get_destination_distribution,
     get_daily_summary,
     get_blockade_indicators,
+    get_india_hormuz_all_scenarios,
+    compute_india_hormuz_impact,
 )
+
 
 app = FastAPI(
     title="Hormuz Maritime Intelligence",
@@ -175,6 +179,31 @@ async def api_blockade():
 async def api_summary():
 
     return await get_daily_summary()
+
+
+# ==========================================================
+# INDIA — HORMUZ IMPACT (INDIA-SPECIFIC PRESET)
+# ==========================================================
+
+@app.get("/api/india-hormuz")
+async def api_india_hormuz():
+    """
+    Return India crude oil import baseline + resilience scores
+    for 30%, 60%, and 100% Hormuz closure scenarios.
+    Real data from IEA, MoPNG, PPAC.
+    """
+    return get_india_hormuz_all_scenarios()
+
+
+@app.get("/api/india-hormuz/{closure_pct}")
+async def api_india_hormuz_scenario(closure_pct: int):
+    """
+    Return India impact for a specific closure percentage.
+    Accepts: 30, 60, or 100
+    """
+    if closure_pct not in (30, 60, 100):
+        return {"error": "closure_pct must be 30, 60, or 100"}
+    return compute_india_hormuz_impact(closure_pct)
 
 
 # ==========================================================
