@@ -6,7 +6,7 @@ An AI-powered, real-time energy security and macroeconomic risk intelligence pla
 
 Deploy the platform instantly to your preferred cloud provider:
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/mandira15/Hormuz-SentinelX)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://hormuz-sentinelx.onrender.com/)
 
 ---
 
