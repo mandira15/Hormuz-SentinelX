@@ -12,11 +12,11 @@ import websockets
 
 from src.country_codes import mmsi_to_flag
 from src.destinations import normalize_destination
-from land_filter import is_on_land
+from src.land_filter import is_on_land
 
 logger = logging.getLogger(__name__)
 
-API_KEY = os.environ["AISSTREAM_API_KEY"]
+API_KEY = os.getenv("AISSTREAM_API_KEY")
 
 # Persian Gulf + Gulf of Oman — full coverage
 BBOX = [[22.0, 48.0], [30.5, 60.0]]
@@ -109,6 +109,12 @@ async def flush_batch(batch: list[tuple]) -> int:
 
 async def collect():
     """Connect to aisstream.io and store AIS messages."""
+    if not API_KEY:
+        logger.warning("AISSTREAM_API_KEY is not set. AIS data collection is disabled. Running in demo mode.")
+        while True:
+            await asyncio.sleep(3600)
+        return
+
     await init_db()
 
     subscribe_msg = {

@@ -4,3 +4,12 @@ pydantic==2.3.0
 jinja2
 aiofiles
 python-multipart
+websockets
+aiosqlite
+shapely
+pandas
+matplotlib
+numpy
+pillow
+redis
+groq

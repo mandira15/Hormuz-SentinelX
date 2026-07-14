@@ -671,4 +671,12 @@ def get_india_hormuz_all_scenarios() -> dict:
                 "IMF World Economic Outlook 2024",
             ],
         },
-    }
+    }
+
+
+async def transit_detection_loop(interval_sec: int = 300):
+    """
+    Dummy loop for hackathon demo to run heartbeat and randomize demo values.
+    """
+    await heartbeat()
+

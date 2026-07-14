@@ -1,5 +1,9 @@
 """Entry point: run AIS collector, analytics engine, and web server concurrently."""
 
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import asyncio
 import logging
 
@@ -16,7 +20,8 @@ logging.basicConfig(
 
 async def run_server():
     """Run FastAPI server."""
-    config = uvicorn.Config("api:app", host="0.0.0.0", port=8002, log_level="info")
+    port = int(os.environ.get("PORT", 8002))
+    config = uvicorn.Config("src.api:app", host="0.0.0.0", port=port, log_level="info")
     server = uvicorn.Server(config)
     await server.serve()
 
@@ -32,3 +37,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
